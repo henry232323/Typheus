@@ -1,0 +1,2 @@
+# Typheus
+A discord bot
