@@ -15,6 +15,17 @@ class Misc(object):
         self.bot = bot
 
     @commands.command()
+    async def ping(self):
+        '''
+        Test the bot's connection ping
+        '''
+        msg = "P{0}ng".format(choice("aeiou"))
+        a = time.time()
+        ping = await self.bot.say(msg)
+        b = time.time()
+        await self.bot.edit_message(ping, " ".join([msg,"`{:.3f}ms`".format((b-a)*1000)]))
+
+    @commands.command()
     async def info(self, ctx):
         """Bot Info"""
         result = ['**About Me:**']
@@ -35,7 +46,50 @@ class Misc(object):
         result.append('- Unique Members: {} ({} online)'.format(len(unique_members), unique_online))
         result.append('- {} text channels, {} voice channels'.format(text, voice))
 
-        msg = await ctx.send('\n'.join(result), delete_after=20)
+        await ctx.send('\n'.join(result), delete_after=20)
+
+    @commands.command()
+    async def totalcmds(self):
+        '''Get totals of commands and their number of uses'''
+        await self.bot.say('\n'.join("{0}: {1}".format(val[0], val[1]) for val in self.bot.commands_used.items()))
+
+    @commands.command()
+    async def source(self, command : str = None):
+        """Displays my full source code or for a specific command.
+        To display the source code of a subcommand you have to separate it by
+        periods, e.g. tag.create for the create subcommand of the tag command.
+        """
+        source_url = 'https://github.com/henry232323/Typheus'
+        if command is None:
+            await self.bot.say(source_url)
+            return
+
+        code_path = command.split('.')
+        obj = self.bot
+        for cmd in code_path:
+            try:
+                obj = obj.get_command(cmd)
+                if obj is None:
+                    await self.bot.say('Could not find the command ' + cmd)
+                    return
+            except AttributeError:
+                await self.bot.say('{0.name} command has no subcommands'.format(obj))
+                return
+
+        # since we found the command we're looking for, presumably anyway, let's
+        # try to access the code itself
+        src = obj.callback.__code__
+
+        if not obj.callback.__module__.startswith('discord'):
+            # not a built-in command
+            location = os.path.relpath(src.co_filename).replace('\\', '/')
+            final_url = '<{}/tree/master/{}#L{}>'.format(source_url, location, src.co_firstlineno)
+        else:
+            location = obj.callback.__module__.replace('.', '/') + '.py'
+            base = 'https://github.com/Rapptz/discord.py'
+            final_url = '<{}/blob/master/{}#L{}>'.format(base, location, src.co_firstlineno)
+
+        await self.bot.say(final_url)
 
     @commands.command()
     async def undertext(self, ctx, sprite: str, text: str):

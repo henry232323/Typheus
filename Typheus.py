@@ -63,7 +63,7 @@ class Typheus(commands.Bot):
             except TypeError:
                 pass
 
-        await self.change_presence(game=discord.Game(name="; for help!"))
+        await self.change_presence(game=discord.Game(name=";help for help!"))
 
         await self.runserv()
 
@@ -135,27 +135,22 @@ class Typheus(commands.Bot):
                 self.webserv = self.cmd.app
                 srv = self.webserv.create_server(host='0.0.0.0', port=5000, loop=self.loop)
                 await srv
-                print("done")
             except NameError:
                 break
 
-    async def on_guild_join(self, guild):
-        pass
-
-    async def on_channel_delete(self, channel):
-        self.cogs["RPG"]
 
 def main():
     with open("resources/auth", 'rb') as ath:
         auth = json.loads(ath.read().decode("utf-8", "replace"))[0]
 
+    prefix = ';' if 'debug' not in sys.argv else '$'
     invlink = "https://discordapp.com/oauth2/authorize?client_id=284456340879966231&scope=bot&permissions=305196074"
     description = "Typheus, a little discord bot by Henry#6174 {invlink}".format(invlink=invlink)
     async def starter():
         typheus = Typheus(
             loop=loop,
             description=description,
-            command_prefix=";",
+            command_prefix=prefix,
             pm_help=True)
 
         await typheus.start(*auth)
@@ -164,7 +159,7 @@ def main():
             typheus = Typheus(
                               loop=loop,
                               description=description,
-                              command_prefix=";",
+                              command_prefix=prefix,
                               pm_help=True)
 
             await typheus.start(*auth)
