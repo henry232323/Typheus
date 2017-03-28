@@ -1,13 +1,15 @@
 import io
+import os
 import base64
 import asyncio
-import aiohttp
-from binascii import Error as PaddingError
-from collections import Counter
 import discord
-
+import aiohttp
+from time import time
+from random import choice
 from cogs.utils import checks
+from collections import Counter
 from discord.ext import commands
+from binascii import Error as PaddingError
 
 
 class Misc(object):
@@ -15,14 +17,14 @@ class Misc(object):
         self.bot = bot
 
     @commands.command()
-    async def ping(self):
+    async def ping(self, ctx):
         '''
         Test the bot's connection ping
         '''
         msg = "P{0}ng".format(choice("aeiou"))
-        a = time.time()
-        ping = await self.bot.say(msg)
-        b = time.time()
+        a = time()
+        ping = await ctx.send(msg)
+        b = time()
         await self.bot.edit_message(ping, " ".join([msg,"`{:.3f}ms`".format((b-a)*1000)]))
 
     @commands.command()
@@ -49,19 +51,19 @@ class Misc(object):
         await ctx.send('\n'.join(result), delete_after=20)
 
     @commands.command()
-    async def totalcmds(self):
+    async def totalcmds(self, ctx):
         '''Get totals of commands and their number of uses'''
-        await self.bot.say('\n'.join("{0}: {1}".format(val[0], val[1]) for val in self.bot.commands_used.items()))
+        await ctx.send('\n'.join("{0}: {1}".format(val[0], val[1]) for val in self.bot.commands_used.items()))
 
     @commands.command()
-    async def source(self, command : str = None):
+    async def source(self, ctx, command: str = None):
         """Displays my full source code or for a specific command.
         To display the source code of a subcommand you have to separate it by
         periods, e.g. tag.create for the create subcommand of the tag command.
         """
         source_url = 'https://github.com/henry232323/Typheus'
         if command is None:
-            await self.bot.say(source_url)
+            await ctx.send(source_url)
             return
 
         code_path = command.split('.')
@@ -70,10 +72,10 @@ class Misc(object):
             try:
                 obj = obj.get_command(cmd)
                 if obj is None:
-                    await self.bot.say('Could not find the command ' + cmd)
+                    await ctx.send('Could not find the command ' + cmd)
                     return
             except AttributeError:
-                await self.bot.say('{0.name} command has no subcommands'.format(obj))
+                await ctx.send('{0.name} command has no subcommands'.format(obj))
                 return
 
         # since we found the command we're looking for, presumably anyway, let's
@@ -89,7 +91,7 @@ class Misc(object):
             base = 'https://github.com/Rapptz/discord.py'
             final_url = '<{}/blob/master/{}#L{}>'.format(base, location, src.co_firstlineno)
 
-        await self.bot.say(final_url)
+        await ctx.send(final_url)
 
     @commands.command()
     async def undertext(self, ctx, sprite: str, text: str):

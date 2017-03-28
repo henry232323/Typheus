@@ -12,13 +12,14 @@ import datetime
 from collections import Counter
 
 from cogs import *
+from WebServer import CmdRunner
 
 try:
     import uvloop
-    loop = uvloop.new_event_loop()
-    from SanicWebServer import CmdRunner
+    asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 except ImportError:
-    loop = asyncio.get_event_loop()
+    pass
+
 
 
 class Typheus(commands.Bot):
@@ -36,13 +37,13 @@ class Typheus(commands.Bot):
                      "RPG": RPG.RPG(self)}
         self.running = True
 
-        with open("resources/alterniabound_transcript.txt", "rb") as tsf:
+        with open("resources/dave.txt", "rb") as tsf:
             self._model_base = tsf.read().decode("utf-8", 'replace')
-            self._markov_model = markovify.Text(self._model_base)
+        self._markov_model = markovify.NewlineText(self._model_base)
 
-        self.logger = logging.getLogger('discord') # Discord Logging
+        self.logger = logging.getLogger('discord')  # Discord Logging
         self.logger.setLevel(logging.DEBUG)
-        self.handler = logging.FileHandler(filename=os.path.join('resources','discord.log'), encoding='utf-8', mode='w')
+        self.handler = logging.FileHandler(filename=os.path.join('resources', 'discord.log'), encoding='utf-8', mode='w')
         self.handler.setFormatter(logging.Formatter('%(asctime)s:%(levelname)s:%(name)s: %(message)s'))
         self.logger.addHandler(self.handler)
 
@@ -108,7 +109,6 @@ class Typheus(commands.Bot):
         elif isinstance(error, commands.CheckFailure):
             await ctx.send("You do not have permission to use this command!")
 
-
     async def markov_mention(self, message):
         response = self._markov_model.make_sentence(tries=100)
         await message.channel.send(response)
@@ -130,19 +130,17 @@ class Typheus(commands.Bot):
 
     async def runserv(self):
         while True:
-            try:
-                self.cmd = CmdRunner(self)
-                self.webserv = self.cmd.app
-                srv = self.webserv.create_server(host='0.0.0.0', port=5000, loop=self.loop)
-                await srv
-            except NameError:
-                break
+            self.cmd = CmdRunner(self)
+            self.webserv = self.cmd.app
+            srv = self.webserv.start('127.0.0.1', 5000)
+            await srv
 
 
 def main():
     with open("resources/auth", 'rb') as ath:
         auth = json.loads(ath.read().decode("utf-8", "replace"))[0]
 
+    loop = asyncio.get_event_loop()
     prefix = ';' if 'debug' not in sys.argv else '$'
     invlink = "https://discordapp.com/oauth2/authorize?client_id=284456340879966231&scope=bot&permissions=305196074"
     description = "Typheus, a little discord bot by Henry#6174 {invlink}".format(invlink=invlink)
@@ -154,6 +152,8 @@ def main():
             pm_help=True)
 
         await typheus.start(*auth)
+        for shutdown in typheus.shutdowns:
+            await shutdown
 
         while typheus.running:
             typheus = Typheus(
@@ -163,6 +163,8 @@ def main():
                               pm_help=True)
 
             await typheus.start(*auth)
+            for shutdown in typheus.shutdowns:
+                await shutdown
 
     loop.run_until_complete(starter())
 

@@ -49,6 +49,11 @@ class RPG(object):
     async def shutdown(self):
         json.save_json("invdata/servers.json", self.settings)
 
+    def addserv(self, ctx, mode=1, items=None, ecc=False):
+        if items is None:
+            items = dict()
+        self.settings[str(ctx.message.guild.id)] = dict(mode=mode, items=items, eco=ecc, cur="dollars")
+
     @commands.group(invoke_without_command=True, no_pm=True, aliases=['i', 'inv'])
     async def inventory(self, ctx, *, member: discord.Member=None):
         """Check your or another users inventory
@@ -72,7 +77,7 @@ class RPG(object):
         mode = mode.lower()
         if str(ctx.message.guild.id) not in self.settings:
             if mode == "complex":
-                self.settings[str(ctx.message.guild.id)] = dict(mode=1, items=dict(), eco=False)
+                self.addserv(ctx)
                 await ctx.send("Mode changed to complex!")
                 return
             else:
@@ -89,6 +94,7 @@ class RPG(object):
 
     @checks.mod_or_permissions()
     @inventory.command(no_pm=True)
+    @server_complex_mode
     async def additem(self, ctx, name: str, *, data: str):
         """If guild mode is complex, add an item that can be given
         Usage: ;inventory additem itemname *data
@@ -100,31 +106,23 @@ class RPG(object):
         value: a 'market' value, more implementation later
         Set data to 'None' for no data"""
 
-        if str(ctx.guild.id) not in self.settings:
-            self.settings[str(ctx.guild.id)] = dict(mode=1, items=dict(), eco=False)
-
         if "@everyone" in name or "@here" in name:
             await ctx.send("Forbidden words in item name (@everyone or @here)")
             return
 
-        if self.settings[str(ctx.guild.id)]["mode"] == 1:
-            if data.lower() == "none":
-                dfmt = ()
-            else:
-                dfmt = data.split("\n")
-            fdict = dict()
-            for item in dfmt:
-                split = item.split(": ")
-                key = split[0]
-                val = ": ".join(split[1:])
-                fdict[key] = val
-
-            self.settings[str(ctx.guild.id)]['items'][name] = fdict
-            await ctx.send("Added item {}".format(name))
+        if data.lower() == "none":
+            dfmt = ()
         else:
-            await ctx.send("Items are not enabled in simple mode!"
-                               " Use the `inventory servmode` command to switch"
-                               " to complex mode, where items are restricted to admin defined")
+            dfmt = data.split("\n")
+        fdict = dict()
+        for item in dfmt:
+            split = item.split(": ")
+            key = split[0]
+            val = ": ".join(split[1:])
+            fdict[key] = val
+
+        self.settings[str(ctx.guild.id)]['items'][name] = fdict
+        await ctx.send("Added item {}".format(name))
 
     @checks.mod_or_inv()
     @inventory.command(no_pm=True)
@@ -133,7 +131,7 @@ class RPG(object):
         Usage ;inventory giveitem itemname number *@Users"""
         num = abs(num)
         if str(ctx.guild.id) not in self.settings:
-            self.settings[str(ctx.guild.id)] = dict(mode=0, items=dict(), eco=False)
+            self.addserv(ctx, mode=False)
         if self.settings[str(ctx.guild.id)]["mode"] == 0 or item in self.settings[str(ctx.guild.id)]["items"]:
             for member in members:
                 await self.add_inv(member, (item, num))
@@ -356,12 +354,12 @@ class RPG(object):
 
     @inventory.command(no_pm=True)
     @server_complex_mode
-    async def useeco(self, ctx, value : str):
+    async def useeco(self, ctx, value: str):
         """Toggle guild economy features, off by default"""
         value = value.lower()
         if value == "true":
             if str(ctx.guild.id) not in self.settings:
-                self.settings[str(ctx.guild.id)] = dict(mode=1, items=dict(), eco=True)
+                self.addserv(ctx, ecc=True)
             else:
                 self.settings[str(ctx.guild.id)]['eco'] = True
             await ctx.send("Server economy features set to ON")
@@ -376,6 +374,7 @@ class RPG(object):
     @inventory.command(no_pm=True)
     @server_eco_mode
     async def sell(self, ctx, item: str, num: int):
+        """If item has a set value, sell a number of the item"""
         num = abs(num)
         settings = self.settings[str(ctx.guild.id)]
         if item in settings['items']:
@@ -405,7 +404,15 @@ class RPG(object):
         json.save_json(file, data)
 
     @inventory.command(no_pm=True, aliases=['bal', 'money'])
+    @server_eco_mode
     async def balance(self, ctx):
+        """Get your balance"""
         udata = await self.get_inv(ctx.author)
         val = udata['money']
-        await ctx.send("You have ${}".format(val))
+        await ctx.send("You have {} {}".format(val, self.settings[str(ctx.message.guild.id)]['cur']))
+
+    @inventory.command(no_pm=True)
+    @server_eco_mode
+    async def setcurrency(self, ctx, currency: str):
+        """Change the servers currency (a name) for example 'Gold'; 'Dollars'; 'Credits'; etc"""
+        self.settings[str(ctx.message.guild.id)]['cur'] = currency

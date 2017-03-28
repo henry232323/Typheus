@@ -3,13 +3,15 @@ from traceback import format_exc
 from inspect import isawaitable
 from io import StringIO
 import base64
-from sanic import Sanic
-from sanic.response import text, file
-from sanic.exceptions import ServerError
 import json
 
-class CmdRunner():
-    app = Sanic(__name__)
+from kyoukai import Kyoukai
+from kyoukai.asphalt import HTTPRequestContext, Response
+from werkzeug.exceptions import HTTPException
+
+
+class CmdRunner(object):
+    app = Kyoukai("Typheus")
 
     def __init__(self, bot):
         self.bot = bot
@@ -20,19 +22,15 @@ class CmdRunner():
         with open("resources/sburb.ico", 'rb') as ico:
             self.ico = ico
 
-        @self.app.route("/")
-        async def command(request):
+        @self.app.route("/", methods=["GET"])
+        async def index(ctx: HTTPRequestContext):
             try:
-                if request.args['key'][0] == self._key:
-                    return text(await self.run_cmd(base64.b64decode(request.args['cmd'][0]).decode()))
+                if ctx.request.args['key'] == self._key:
+                    return Response(await self.run_cmd(base64.b64decode(ctx.request.args['cmd']).decode()), status=200)
                 else:
-                    raise ServerError("Incorrect key")
+                    raise HTTPException("Incorrect key", 403)
             except KeyError:
-                raise ServerError("Missing key or command")
-
-        @self.app.route("/favicon.ico")
-        async def favicon(request):
-            return file(self.ico)
+                raise HTTPException("Missing key or command", 400)
 
     async def run_cmd(self, msg):
         request_handler = self
@@ -66,6 +64,7 @@ class CmdRunner():
         except Exception as e:
             value = stdout.getvalue()
             fmt = '{}{}'.format(value, format_exc())
+
         else:
             value = stdout.getvalue()
             if result is not None:
