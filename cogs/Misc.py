@@ -1,20 +1,45 @@
+#!/usr/bin/python3
+# Copyright (c) 2016-2017, rhodochrosite.xyz
+#
+# Permission is hereby granted, free of charge, to any person obtaining a
+# copy of this software and associated documentation files (the "Software"),
+# to deal in the Software without restriction, including without limitation
+# the rights to use, copy, modify, merge, publish, distribute, sublicense,
+# and/or sell copies of the Software, and to permit persons to whom the
+# Software is furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL
+# THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+# FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+# DEALINGS IN THE SOFTWARE.
 import io
+import re
 import os
+import json
 import base64
 import asyncio
 import discord
 import aiohttp
+import async_timeout
 from time import time
+from html import unescape
 from random import choice
 from cogs.utils import checks
 from collections import Counter
 from discord.ext import commands
 from binascii import Error as PaddingError
-
+from bs4 import BeautifulSoup
 
 class Misc(object):
     def __init__(self, bot):
         self.bot = bot
+        self.session = aiohttp.ClientSession(loop=self.bot.loop)
 
     @commands.command()
     async def ping(self, ctx):
@@ -129,3 +154,44 @@ class Misc(object):
     async def uptime(self, ctx):
         """Check bot's uptime"""
         await ctx.send("```{}```".format(await self.bot.get_bot_uptime()))
+
+    async def fetch(self, url):
+        with async_timeout.timeout(10):
+            async with self.session.get(url) as response:
+                return await response.text()
+
+    @commands.command()
+    async def pol(self, ctx):
+        """Do you like /pol?"""
+        with ctx.channel.typing():
+            for x in range(5):
+                try:
+                    api = json.loads(await self.fetch('https://a.4cdn.org/pol/catalog.json'))
+                    html = choice(api[0]["threads"])["com"]
+                    snd = BeautifulSoup(html, 'html.parser').get_text()
+                    break
+                except IndexError:
+                    pass
+            else:
+                snd = "Failed to get a post!"
+            print(snd)
+            await ctx.send(snd, delete_after=300)
+
+    @commands.command()
+    @checks.nsfw_channel()
+    async def fchan(self, ctx, board: str):
+        """4 cham"""
+        with ctx.channel.typing():
+            for x in range(5):
+                try:
+                    api = json.loads(await self.fetch('https://a.4cdn.org/{}/catalog.json'.format(board)))
+                    html = choice(api[0]["threads"])["com"]
+                    snd = BeautifulSoup(html, 'html.parser').get_text()
+                    break
+                except IndexError:
+                    pass
+            else:
+                snd = "Failed to get a post!"
+
+            print(snd)
+            await ctx.send(snd, delete_after=300)

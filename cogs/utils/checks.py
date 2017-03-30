@@ -78,3 +78,8 @@ def owner_or_permissions(**perms):
     def predicate(ctx):
         return role_or_permissions(ctx, lambda ctx: is_owner_check(ctx.message))
     return commands.check(predicate)
+
+def nsfw_channel():
+    def predicate(ctx):
+        return "nsfw" in ctx.channel.name
+    return commands.check(predicate)

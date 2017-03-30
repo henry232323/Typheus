@@ -1,3 +1,23 @@
+#!/usr/bin/python3
+# Copyright (c) 2016-2017, rhodochrosite.xyz
+#
+# Permission is hereby granted, free of charge, to any person obtaining a
+# copy of this software and associated documentation files (the "Software"),
+# to deal in the Software without restriction, including without limitation
+# the rights to use, copy, modify, merge, publish, distribute, sublicense,
+# and/or sell copies of the Software, and to permit persons to whom the
+# Software is furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL
+# THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+# FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+# DEALINGS IN THE SOFTWARE.
 import asyncio
 import discord
 from discord.ext import commands
@@ -19,7 +39,6 @@ try:
     asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 except ImportError:
     pass
-
 
 
 class Typheus(commands.Bot):
@@ -47,6 +66,8 @@ class Typheus(commands.Bot):
         self.handler.setFormatter(logging.Formatter('%(asctime)s:%(levelname)s:%(name)s: %(message)s'))
         self.logger.addHandler(self.handler)
 
+        asyncio.ensure_future(self.runserv())
+
     async def on_ready(self):
         for cog in self.cogs.values():
             self.add_cog(cog)
@@ -65,8 +86,6 @@ class Typheus(commands.Bot):
                 pass
 
         await self.change_presence(game=discord.Game(name=";help for help!"))
-
-        await self.runserv()
 
     async def on_message(self, message):
         if message.author.bot:
@@ -107,7 +126,7 @@ class Typheus(commands.Bot):
             except discord.errors.Forbidden:
                 pass
         elif isinstance(error, commands.CheckFailure):
-            await ctx.send("You do not have permission to use this command!")
+            await ctx.send("You do not have permission to use this command or it is disabled here!")
 
     async def markov_mention(self, message):
         response = self._markov_model.make_sentence(tries=100)
@@ -129,12 +148,10 @@ class Typheus(commands.Bot):
         return fmt.format(d=days, h=hours, m=minutes, s=seconds)
 
     async def runserv(self):
-        while True:
-            self.cmd = CmdRunner(self)
-            self.webserv = self.cmd.app
-            srv = self.webserv.start('127.0.0.1', 5000)
-            await srv
-
+        self.cmd = CmdRunner(self)
+        self.webserv = self.cmd.app
+        srv = self.webserv.start('0.0.0.0', 5000)
+        await srv
 
 def main():
     with open("resources/auth", 'rb') as ath:
@@ -143,7 +160,7 @@ def main():
     loop = asyncio.get_event_loop()
     prefix = ';' if 'debug' not in sys.argv else '$'
     invlink = "https://discordapp.com/oauth2/authorize?client_id=284456340879966231&scope=bot&permissions=305196074"
-    description = "Typheus, a little discord bot by Henry#6174 {invlink}".format(invlink=invlink)
+    description = "Typheus, a little discord bot by Henry#6174\n{invlink}".format(invlink=invlink)
     async def starter():
         typheus = Typheus(
             loop=loop,
@@ -153,7 +170,7 @@ def main():
 
         await typheus.start(*auth)
         for shutdown in typheus.shutdowns:
-            await shutdown
+            await shutdown()
 
         while typheus.running:
             typheus = Typheus(

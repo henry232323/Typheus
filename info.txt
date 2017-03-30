@@ -1,0 +1,683 @@
+{
+    "lights": {
+        "1": {
+            "state": {
+                "on": true,
+                "bri": 254,
+                "alert": "none",
+                "reachable": false
+            },
+            "type": "Dimmable light",
+            "name": "Deanna's Bedside",
+            "modelid": "LWB006",
+            "manufacturername": "Philips",
+            "uniqueid": "00:17:88:01:10:30:03:a4-0b",
+            "swversion": "5.38.2.19136"
+        },
+        "2": {
+            "state": {
+                "on": true,
+                "bri": 254,
+                "alert": "none",
+                "reachable": false
+            },
+            "type": "Dimmable light",
+            "name": "Steve's Bedside",
+            "modelid": "LWB006",
+            "manufacturername": "Philips",
+            "uniqueid": "00:17:88:01:10:50:2d:ee-0b",
+            "swversion": "5.38.2.19136"
+        },
+        "3": {
+            "state": {
+                "on": false,
+                "bri": 44,
+                "alert": "none",
+                "reachable": false
+            },
+            "type": "Dimmable light",
+            "name": "Nick' Light",
+            "modelid": "LWB006",
+            "manufacturername": "Philips",
+            "uniqueid": "00:17:88:01:10:57:13:dd-0b",
+            "swversion": "5.38.2.19136"
+        },
+        "4": {
+            "state": {
+                "on": true,
+                "bri": 254,
+                "alert": "none",
+                "reachable": false
+            },
+            "type": "Dimmable light",
+            "name": "Henry's Light",
+            "modelid": "LWB006",
+            "manufacturername": "Philips",
+            "uniqueid": "00:17:88:01:10:40:69:ba-0b",
+            "swversion": "5.38.2.19136"
+        },
+        "5": {
+            "state": {
+                "on": false,
+                "bri": 6,
+                "alert": "none",
+                "reachable": true
+            },
+            "type": "Dimmable light",
+            "name": "Office",
+            "modelid": "LWB014",
+            "manufacturername": "Philips",
+            "uniqueid": "00:17:88:01:02:3b:20:40-0b",
+            "swversion": "1.15.2_r19181",
+            "swconfigid": "D1D2055F",
+            "productid": "Philips-LWB014-1-A19DLv3"
+        }
+    },
+    "groups": {
+        "1": {
+            "name": "Master",
+            "lights": [
+                "1",
+                "2"
+            ],
+            "type": "Room",
+            "state": {
+                "all_on": true,
+                "any_on": true
+            },
+            "class": "Bedroom",
+            "action": {
+                "on": true,
+                "bri": 254,
+                "alert": "none"
+            }
+        },
+        "2": {
+            "name": "Living",
+            "lights": [],
+            "type": "Room",
+            "state": {
+                "all_on": false,
+                "any_on": false
+            },
+            "class": "Living room",
+            "action": {
+                "on": false,
+                "alert": "none"
+            }
+        },
+        "3": {
+            "name": "Office",
+            "lights": [
+                "5"
+            ],
+            "type": "Room",
+            "state": {
+                "all_on": false,
+                "any_on": false
+            },
+            "class": "Living room",
+            "action": {
+                "on": false,
+                "bri": 6,
+                "alert": "none"
+            }
+        }
+    },
+    "config": {
+        "name": "Philips hue",
+        "zigbeechannel": 15,
+        "bridgeid": "001788FFFE239940",
+        "mac": "00:17:88:23:99:40",
+        "dhcp": true,
+        "ipaddress": "10.0.1.4",
+        "netmask": "255.255.255.0",
+        "gateway": "10.0.1.1",
+        "proxyaddress": "none",
+        "proxyport": 0,
+        "UTC": "2017-03-22T02:11:47",
+        "localtime": "2017-03-21T20:11:47",
+        "timezone": "America/Denver",
+        "modelid": "BSB002",
+        "datastoreversion": "59",
+        "swversion": "01036659",
+        "apiversion": "1.16.0",
+        "swupdate": {
+            "updatestate": 2,
+            "checkforupdate": false,
+            "devicetypes": {
+                "bridge": true,
+                "lights": [],
+                "sensors": []
+            },
+            "url": "",
+            "text": "BSB002 1.17.0 release",
+            "notify": true
+        },
+        "linkbutton": false,
+        "portalservices": true,
+        "portalconnection": "connected",
+        "portalstate": {
+            "signedon": true,
+            "incoming": true,
+            "outgoing": true,
+            "communication": "disconnected"
+        },
+        "factorynew": false,
+        "replacesbridgeid": null,
+        "backup": {
+            "status": "idle",
+            "errorcode": 0
+        },
+        "whitelist": {
+            "qIp2toVq9D9LiBXN": {
+                "last use date": "2016-05-20T03:24:57",
+                "create date": "2016-01-22T19:48:09",
+                "name": "Hue#Stephen Krausse"
+            },
+            "pDjQzUOI5oNpPHX3": {
+                "last use date": "2017-03-21T13:35:48",
+                "create date": "2016-01-23T02:57:55",
+                "name": "Hue#Deanna's iPhone"
+            },
+            "SOC8T5YEJH2ig6si": {
+                "last use date": "2016-04-07T04:35:34",
+                "create date": "2016-01-23T23:57:43",
+                "name": "Hue#Henry's iPhone"
+            },
+            "G6w03KMZIqCFsupx": {
+                "last use date": "2016-04-03T19:05:32",
+                "create date": "2016-01-24T00:01:40",
+                "name": "Hue#iPhone"
+            },
+            "ES5fxbs-w9dSjTYYMmxSfoQLkZ94P5UiY98BDLUM": {
+                "last use date": "2016-05-20T03:24:57",
+                "create date": "2016-05-20T03:18:37",
+                "name": "Hue 2#Stephen Krausse"
+            },
+            "8oSZhM3vvLS43j86sHlQeWwNvArws7oWtsn283Nw": {
+                "last use date": "2017-03-11T07:50:45",
+                "create date": "2016-05-20T03:18:38",
+                "name": "Hue 2#Stephen Krausse"
+            },
+            "giCFSxx70fU-Mb8AiLTFp0PaQ2qu4Zni5pi3LZRF": {
+                "last use date": "2017-03-22T02:11:47",
+                "create date": "2017-03-22T02:08:09",
+                "name": "python_hue"
+            }
+        }
+    },
+    "schedules": {
+        "7360957202681772": {
+            "name": "Alarm",
+            "description": "Steve Wake Up",
+            "command": {
+                "address": "/api/qIp2toVq9D9LiBXN/groups/0/action",
+                "body": {
+                    "scene": "28d516eba-on-10"
+                },
+                "method": "PUT"
+            },
+            "localtime": "W003/T06:30:00",
+            "time": "W003/T12:30:00",
+            "created": "2016-01-23T05:43:46",
+            "status": "disabled",
+            "recycle": false
+        },
+        "5249804024061286": {
+            "name": "Steve Wakeup",
+            "description": "Steve Wake Up",
+            "command": {
+                "address": "/api/qIp2toVq9D9LiBXN/groups/0/action",
+                "body": {
+                    "scene": "28d516eba-on-10"
+                },
+                "method": "PUT"
+            },
+            "localtime": "W124/T05:45:00",
+            "time": "W124/T11:45:00",
+            "created": "2016-02-01T02:36:11",
+            "status": "disabled",
+            "recycle": false
+        },
+        "9999125896756280": {
+            "name": "Henry On",
+            "description": "Henry Morning",
+            "command": {
+                "address": "/api/SOC8T5YEJH2ig6si/groups/0/action",
+                "body": {
+                    "scene": "7d9d81ba7-on-0"
+                },
+                "method": "PUT"
+            },
+            "localtime": "W124/T06:00:00",
+            "time": "W124/T12:00:00",
+            "created": "2016-01-24T00:03:55",
+            "status": "disabled",
+            "recycle": false
+        },
+        "6261380361994181": {
+            "name": "Henry Off",
+            "description": "",
+            "command": {
+                "address": "/api/SOC8T5YEJH2ig6si/groups/0/action",
+                "body": {
+                    "scene": "a87ff679a-off-0"
+                },
+                "method": "PUT"
+            },
+            "localtime": "W127/T19:50:00",
+            "time": "W127/T01:50:00",
+            "created": "2016-02-01T13:56:03",
+            "status": "disabled",
+            "recycle": false
+        },
+        "1853319197864647": {
+            "name": "Alarm",
+            "description": "Snooze",
+            "command": {
+                "address": "/api/G6w03KMZIqCFsupx/groups/0/action",
+                "body": {
+                    "scene": "e069ec8aa-on-0"
+                },
+                "method": "PUT"
+            },
+            "localtime": "W124/T06:40:00",
+            "time": "W124/T12:40:00",
+            "created": "2016-02-01T14:25:36",
+            "status": "disabled",
+            "recycle": false
+        },
+        "7446428152451530": {
+            "name": "Alarm",
+            "description": "Full bright",
+            "command": {
+                "address": "/api/G6w03KMZIqCFsupx/groups/0/action",
+                "body": {
+                    "scene": "756e841fb-on-0"
+                },
+                "method": "PUT"
+            },
+            "localtime": "W124/T15:25:00",
+            "time": "W124/T21:25:00",
+            "created": "2016-02-01T14:26:15",
+            "status": "disabled",
+            "recycle": false
+        },
+        "7993873242578940": {
+            "name": "Alarm",
+            "description": "Rise & shine",
+            "command": {
+                "address": "/api/pDjQzUOI5oNpPHX3/groups/0/action",
+                "body": {
+                    "scene": "78d9ae79d-on-0"
+                },
+                "method": "PUT"
+            },
+            "localtime": "W124/T06:00:00",
+            "time": "W124/T12:00:00",
+            "created": "2016-02-19T04:44:21",
+            "status": "disabled",
+            "recycle": false
+        },
+        "3279137684339331": {
+            "name": "Alarm",
+            "description": "Full bright",
+            "command": {
+                "address": "/api/G6w03KMZIqCFsupx/groups/0/action",
+                "body": {
+                    "scene": "756e841fb-on-1"
+                },
+                "method": "PUT"
+            },
+            "localtime": "W124/T06:50:00",
+            "time": "W124/T12:50:00",
+            "created": "2016-02-29T05:32:37",
+            "status": "disabled",
+            "recycle": false
+        },
+        "4326380111103077": {
+            "name": "Alarm",
+            "description": "",
+            "command": {
+                "address": "/api/qIp2toVq9D9LiBXN/groups/0/action",
+                "body": {
+                    "scene": "c81e728d9-off-0"
+                },
+                "method": "PUT"
+            },
+            "localtime": "W124/T06:30:00",
+            "time": "W124/T12:30:00",
+            "created": "2016-04-14T05:18:55",
+            "status": "disabled",
+            "recycle": false
+        },
+        "4463401300426166": {
+            "name": "Timer",
+            "description": "",
+            "command": {
+                "address": "/api/qIp2toVq9D9LiBXN/groups/0/action",
+                "body": {
+                    "scene": "c81e728d9-off-0"
+                },
+                "method": "PUT"
+            },
+            "time": "PT02:40:00",
+            "created": "2016-04-25T03:18:23",
+            "status": "disabled",
+            "autodelete": false,
+            "starttime": "2016-04-25T03:18:23",
+            "recycle": false
+        }
+    },
+    "scenes": {
+        "756e841fb-on-0": {
+            "name": "Full bright on 0",
+            "lights": [
+                "1",
+                "2"
+            ],
+            "owner": "qIp2toVq9D9LiBXN",
+            "recycle": true,
+            "locked": true,
+            "appdata": {},
+            "picture": "",
+            "lastupdated": "2016-01-22T20:03:17",
+            "version": 1
+        },
+        "d7741cd71-on-0": {
+            "name": "Read on 0",
+            "lights": [
+                "1",
+                "2"
+            ],
+            "owner": "qIp2toVq9D9LiBXN",
+            "recycle": true,
+            "locked": false,
+            "appdata": {},
+            "picture": "",
+            "lastupdated": "2016-01-22T20:03:18",
+            "version": 1
+        },
+        "78d9ae79d-on-0": {
+            "name": "Wake Up on 0",
+            "lights": [
+                "1",
+                "2"
+            ],
+            "owner": "qIp2toVq9D9LiBXN",
+            "recycle": true,
+            "locked": true,
+            "appdata": {},
+            "picture": "",
+            "lastupdated": "2016-01-22T20:03:20",
+            "version": 1
+        },
+        "32b256994-on-0": {
+            "name": "Twilight on 0",
+            "lights": [
+                "1",
+                "2"
+            ],
+            "owner": "qIp2toVq9D9LiBXN",
+            "recycle": true,
+            "locked": false,
+            "appdata": {},
+            "picture": "",
+            "lastupdated": "2016-01-22T20:03:22",
+            "version": 1
+        },
+        "e069ec8aa-on-0": {
+            "name": "Snooze on 0",
+            "lights": [
+                "1",
+                "2"
+            ],
+            "owner": "qIp2toVq9D9LiBXN",
+            "recycle": true,
+            "locked": true,
+            "appdata": {},
+            "picture": "",
+            "lastupdated": "2016-01-22T20:03:23",
+            "version": 1
+        },
+        "0000c6072-on-0": {
+            "name": "Steve Wake Up on",
+            "lights": [
+                "2"
+            ],
+            "owner": "qIp2toVq9D9LiBXN",
+            "recycle": true,
+            "locked": false,
+            "appdata": {},
+            "picture": "",
+            "lastupdated": "2016-01-23T05:41:46",
+            "version": 1
+        },
+        "28d516eba-on-0": {
+            "name": "Steve Wake Up on",
+            "lights": [
+                "2"
+            ],
+            "owner": "qIp2toVq9D9LiBXN",
+            "recycle": true,
+            "locked": false,
+            "appdata": {},
+            "picture": "",
+            "lastupdated": "2016-01-23T05:41:59",
+            "version": 1
+        },
+        "28d516eba-on-10": {
+            "name": "Steve Wake Up on",
+            "lights": [
+                "2"
+            ],
+            "owner": "qIp2toVq9D9LiBXN",
+            "recycle": true,
+            "locked": true,
+            "appdata": {},
+            "picture": "",
+            "lastupdated": "2016-01-23T05:43:32",
+            "version": 1
+        },
+        "7d9d81ba7-on-0": {
+            "name": "Henry Morning on",
+            "lights": [
+                "4"
+            ],
+            "owner": "SOC8T5YEJH2ig6si",
+            "recycle": true,
+            "locked": true,
+            "appdata": {},
+            "picture": "",
+            "lastupdated": "2016-01-24T00:04:51",
+            "version": 1
+        },
+        "a87ff679a-off-0": {
+            "name": "1 lights off",
+            "lights": [
+                "4"
+            ],
+            "owner": "SOC8T5YEJH2ig6si",
+            "recycle": true,
+            "locked": true,
+            "appdata": {},
+            "picture": "",
+            "lastupdated": "2016-01-24T00:04:16",
+            "version": 1
+        },
+        "756e841fb-on-1": {
+            "name": "Full bright on 1",
+            "lights": [
+                "1",
+                "2"
+            ],
+            "owner": "G6w03KMZIqCFsupx",
+            "recycle": true,
+            "locked": true,
+            "appdata": {},
+            "picture": "",
+            "lastupdated": "2016-02-29T05:32:37",
+            "version": 1
+        },
+        "6ae0ecf57-on-0": {
+            "name": "Offofif on 0",
+            "lights": [
+                "4"
+            ],
+            "owner": "SOC8T5YEJH2ig6si",
+            "recycle": true,
+            "locked": false,
+            "appdata": {},
+            "picture": "",
+            "lastupdated": "2016-03-21T04:33:23",
+            "version": 1
+        },
+        "c81e728d9-off-0": {
+            "name": "1 lights off",
+            "lights": [
+                "2"
+            ],
+            "owner": "qIp2toVq9D9LiBXN",
+            "recycle": true,
+            "locked": true,
+            "appdata": {},
+            "picture": "",
+            "lastupdated": "2016-04-14T05:18:36",
+            "version": 1
+        },
+        "LbgL6rqqGYDUI-C": {
+            "name": "Bright",
+            "lights": [
+                "1",
+                "2"
+            ],
+            "owner": "8oSZhM3vvLS43j86sHlQeWwNvArws7oWtsn283Nw",
+            "recycle": false,
+            "locked": false,
+            "appdata": {
+                "version": 1,
+                "data": "3G2da_r01_d05"
+            },
+            "picture": "",
+            "lastupdated": "2016-05-20T03:21:28",
+            "version": 2
+        },
+        "AjjrNFFMqgnjsUr": {
+            "name": "Dimmed",
+            "lights": [
+                "1",
+                "2"
+            ],
+            "owner": "8oSZhM3vvLS43j86sHlQeWwNvArws7oWtsn283Nw",
+            "recycle": false,
+            "locked": false,
+            "appdata": {
+                "version": 1,
+                "data": "nsnwe_r01_d06"
+            },
+            "picture": "",
+            "lastupdated": "2016-05-20T03:21:28",
+            "version": 2
+        },
+        "HzV4arCuFxdUulx": {
+            "name": "Nightlight",
+            "lights": [
+                "1",
+                "2"
+            ],
+            "owner": "8oSZhM3vvLS43j86sHlQeWwNvArws7oWtsn283Nw",
+            "recycle": false,
+            "locked": false,
+            "appdata": {
+                "version": 1,
+                "data": "LECWB_r01_d07"
+            },
+            "picture": "",
+            "lastupdated": "2016-05-20T03:21:29",
+            "version": 2
+        },
+        "eccbc87e4-off-0": {
+            "name": "1 lights off",
+            "lights": [
+                "3"
+            ],
+            "owner": "pDjQzUOI5oNpPHX3",
+            "recycle": true,
+            "locked": false,
+            "appdata": {},
+            "picture": "",
+            "lastupdated": "2016-09-30T13:34:23",
+            "version": 1
+        },
+        "oihh9rrWUjhKCjw": {
+            "name": "Bright",
+            "lights": [
+                "5"
+            ],
+            "owner": "8oSZhM3vvLS43j86sHlQeWwNvArws7oWtsn283Nw",
+            "recycle": false,
+            "locked": false,
+            "appdata": {
+                "version": 1,
+                "data": "bqAip_r03_d05"
+            },
+            "picture": "",
+            "lastupdated": "2017-01-07T21:38:53",
+            "version": 2
+        },
+        "bU-HBoLDq0LPjCn": {
+            "name": "Dimmed",
+            "lights": [
+                "5"
+            ],
+            "owner": "8oSZhM3vvLS43j86sHlQeWwNvArws7oWtsn283Nw",
+            "recycle": false,
+            "locked": false,
+            "appdata": {
+                "version": 1,
+                "data": "pjr5Y_r03_d06"
+            },
+            "picture": "",
+            "lastupdated": "2017-01-07T21:38:53",
+            "version": 2
+        },
+        "b72bX9dRe795OPp": {
+            "name": "Nightlight",
+            "lights": [
+                "5"
+            ],
+            "owner": "8oSZhM3vvLS43j86sHlQeWwNvArws7oWtsn283Nw",
+            "recycle": false,
+            "locked": false,
+            "appdata": {
+                "version": 1,
+                "data": "4cXjj_r03_d07"
+            },
+            "picture": "",
+            "lastupdated": "2017-01-07T21:38:53",
+            "version": 2
+        }
+    },
+    "rules": {},
+    "sensors": {
+        "1": {
+            "state": {
+                "daylight": null,
+                "lastupdated": "none"
+            },
+            "config": {
+                "on": true,
+                "configured": false,
+                "sunriseoffset": 30,
+                "sunsetoffset": -30
+            },
+            "name": "Daylight",
+            "type": "Daylight",
+            "modelid": "PHDL00",
+            "manufacturername": "Philips",
+            "swversion": "1.0"
+        }
+    },
+    "resourcelinks": {}
+}
