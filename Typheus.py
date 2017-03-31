@@ -29,6 +29,7 @@ import sys
 import json
 import logging
 import datetime
+from random import choice
 from collections import Counter
 
 from cogs import *
@@ -42,7 +43,7 @@ except ImportError:
 
 
 class Typheus(commands.Bot):
-    def __init__(self, **kwargs):
+    def __init__(self, sh_channel=None, **kwargs):
         super().__init__(**kwargs)
         self.owner_id = 122739797646245899
         self.lounge_id = 166349353999532035
@@ -55,6 +56,22 @@ class Typheus(commands.Bot):
                      "ChannelUtils": ChannelUtils.ChannelUtils(self),
                      "RPG": RPG.RPG(self)}
         self.running = True
+        self._shutdown_channel = sh_channel
+        self.startup_quips = [
+                              "PK Connect β",
+                              "Generating Memes",
+                              "Filling Buckets",
+                              "giting gud",
+                              "Sprinkling Salt",
+                              "Crying over ethical dilemma",
+                              "Having Existential Crisis",
+                              "Becoming sentient",
+                              "Preparing Japes",
+                              "Going to have a bad time",
+                              "Destroying the evidence",
+                              "Infiltrating government",
+                              ""
+                              ]
 
         with open("resources/dave.txt", "rb") as tsf:
             self._model_base = tsf.read().decode("utf-8", 'replace')
@@ -86,6 +103,14 @@ class Typheus(commands.Bot):
                 pass
 
         await self.change_presence(game=discord.Game(name=";help for help!"))
+
+        if self._shutdown_channel:
+            with self._shutdown_channel.typing():
+                for x in range(5):
+                    await choice(self.startup_quips)
+                    await asyncio.sleep(0.75)
+
+
 
     async def on_message(self, message):
         if message.author.bot:
@@ -173,11 +198,15 @@ def main():
             await shutdown()
 
         while typheus.running:
+            sh_channel = None
+            if typheus._shutdown_channel:
+                sh_channel = typheus._shutdown_channel
             typheus = Typheus(
                               loop=loop,
                               description=description,
                               command_prefix=prefix,
-                              pm_help=True)
+                              pm_help=True,
+                              sh_channel=sh_channel)
 
             await typheus.start(*auth)
             for shutdown in typheus.shutdowns:

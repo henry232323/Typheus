@@ -130,4 +130,5 @@ class Admin(object):
         await ctx.send("Restarting!")
         for shutdown in self.bot.shutdowns:
             await shutdown()
+        self.bot._shutdown_channel = ctx.channel
         await self.bot.logout()
