@@ -29,10 +29,11 @@ import sys
 import json
 import logging
 import datetime
-from random import choice
+from random import sample
+from importlib import reload
 from collections import Counter
 
-from cogs import *
+import cogs
 from WebServer import CmdRunner
 
 try:
@@ -51,14 +52,13 @@ class Typheus(commands.Bot):
         self.commands_used = Counter()
         self.debug = "debug" in sys.argv
         self.shutdowns = []
-        self.cogs = {"Admin": Admin.Admin(self),
-                     "Misc": Misc.Misc(self),
-                     "ChannelUtils": ChannelUtils.ChannelUtils(self),
-                     "RPG": RPG.RPG(self)}
+        self.cogs = None
         self.running = True
+        self.webserv = None
+        self.cmd = None
         self._shutdown_channel = sh_channel
         self.startup_quips = [
-                              "PK Connect β",
+                              "PSI Connect β",
                               "Generating Memes",
                               "Filling Buckets",
                               "giting gud",
@@ -70,7 +70,10 @@ class Typheus(commands.Bot):
                               "Going to have a bad time",
                               "Destroying the evidence",
                               "Infiltrating government",
-                              ""
+                              "Doing stuff",
+                              "Contemplating Existence",
+                              "Defeating Carthaginians",
+                              "Crushing hamster revolution"
                               ]
 
         with open("resources/dave.txt", "rb") as tsf:
@@ -83,9 +86,12 @@ class Typheus(commands.Bot):
         self.handler.setFormatter(logging.Formatter('%(asctime)s:%(levelname)s:%(name)s: %(message)s'))
         self.logger.addHandler(self.handler)
 
-        asyncio.ensure_future(self.runserv())
-
     async def on_ready(self):
+        self.cogs = {"Admin": cogs.Admin.Admin(self),
+                     "Misc": cogs.Misc.Misc(self),
+                     "ChannelUtils": cogs.ChannelUtils.ChannelUtils(self),
+                     "RPG": cogs.RPG.RPG(self)}
+
         for cog in self.cogs.values():
             self.add_cog(cog)
         # Login info
@@ -103,14 +109,12 @@ class Typheus(commands.Bot):
                 pass
 
         await self.change_presence(game=discord.Game(name=";help for help!"))
-
         if self._shutdown_channel:
-            with self._shutdown_channel.typing():
-                for x in range(5):
-                    await choice(self.startup_quips)
+            channel = discord.utils.get(self.get_all_channels(), id=self._shutdown_channel)
+            with channel.typing():
+                for x in sample(self.startup_quips, 5):
+                    await channel.send(x)
                     await asyncio.sleep(0.75)
-
-
 
     async def on_message(self, message):
         if message.author.bot:
@@ -172,11 +176,11 @@ class Typheus(commands.Bot):
 
         return fmt.format(d=days, h=hours, m=minutes, s=seconds)
 
-    async def runserv(self):
-        self.cmd = CmdRunner(self)
-        self.webserv = self.cmd.app
-        srv = self.webserv.start('0.0.0.0', 5000)
-        await srv
+async def runserv(typheus):
+    typheus.cmd = CmdRunner(typheus)
+    typheus.webserv = typheus.cmd.app
+    srv = typheus.webserv.start('0.0.0.0', 5000)
+    await srv
 
 def main():
     with open("resources/auth", 'rb') as ath:
@@ -193,6 +197,7 @@ def main():
             command_prefix=prefix,
             pm_help=True)
 
+        asyncio.ensure_future(runserv(typheus))
         await typheus.start(*auth)
         for shutdown in typheus.shutdowns:
             await shutdown()
@@ -201,16 +206,21 @@ def main():
             sh_channel = None
             if typheus._shutdown_channel:
                 sh_channel = typheus._shutdown_channel
+            cmd = typheus.cmd
+            webserv = typheus.webserv
             typheus = Typheus(
                               loop=loop,
                               description=description,
                               command_prefix=prefix,
                               pm_help=True,
                               sh_channel=sh_channel)
-
+            cmd.bot = typheus
+            typheus.cmd = cmd
+            typheus.webserv = webserv
+            reload(cogs)
             await typheus.start(*auth)
             for shutdown in typheus.shutdowns:
-                await shutdown
+                await shutdown()
 
     loop.run_until_complete(starter())
 

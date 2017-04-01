@@ -40,6 +40,10 @@ class Misc(object):
     def __init__(self, bot):
         self.bot = bot
         self.session = aiohttp.ClientSession(loop=self.bot.loop)
+        self.bot.shutdowns.append(self.shutdown)
+
+    async def shutdown(self):
+        self.session.close()
 
     @commands.command()
     async def ping(self, ctx):
@@ -119,46 +123,31 @@ class Misc(object):
         await ctx.send(final_url)
 
     @commands.command()
-    async def undertext(self, ctx, sprite: str, text: str):
+    async def undertext(self, ctx, sprite: str, *, text: str):
         """Create an Undertale style text box
         https://github.com/valrus/undertale-dialog-generator
         Example Usage: ;undertext sprites/Papyrus/1.png "Sans!!!\""""
         try:
-            words = text.split()
-            lens = map(len, words)
-            lines = []
-            ctr = 0
-            brk = 0
-            for ix, leng in enumerate(lens):
-                if ctr+leng > 25:
-                    lines.append(" ".join(words[brk:ix]))
-                    brk = ix
-                    ctr = 0
-                ctr += leng + 1
-            lines.append(" ".join(words[brk:ix]))
-            text = "\n".join(lines)
             async with ctx.channel.typing():
-                async with aiohttp.ClientSession() as session:
-                    sprite = "undertale/static/images/" + sprite
-                    async with session.get('http://ianmccowan.nfshost.com/undertale/submit',
-                                           params={'text': text,
-                                                   'moodImg': sprite}) as response:
-                        data = await response.read()
-                    fp = io.BytesIO(base64.b64decode(data))
-                    await ctx.send(file=fp, filename=text + ".png")
+                sprite = "undertale/static/images/" + sprite
+                response, data = await self.fetch('http://ianmccowan.nfshost.com/undertale/submit',
+                                       params={'text': text,
+                                               'moodImg': sprite})
+                fp = io.BytesIO(base64.b64decode(data))
+                await ctx.send(file=fp, filename=text + ".png")
+
         except PaddingError:
             await ctx.send("API failure! Error Code: {} (You probably got the image path wrong)".format(response.status))
-
 
     @commands.command()
     async def uptime(self, ctx):
         """Check bot's uptime"""
         await ctx.send("```{}```".format(await self.bot.get_bot_uptime()))
 
-    async def fetch(self, url):
+    async def fetch(self, *args, **kwargs):
         with async_timeout.timeout(10):
-            async with self.session.get(url) as response:
-                return await response.text()
+            async with self.session.get(*args, **kwargs) as response:
+                return response, await response.text()
 
     @commands.command()
     async def pol(self, ctx):
@@ -166,7 +155,8 @@ class Misc(object):
         with ctx.channel.typing():
             for x in range(5):
                 try:
-                    api = json.loads(await self.fetch('https://a.4cdn.org/pol/catalog.json'))
+                    response, data = await self.fetch('https://a.4cdn.org/pol/catalog.json')
+                    api = json.loads(data)
                     html = choice(api[0]["threads"])["com"]
                     snd = BeautifulSoup(html, 'html.parser').get_text()
                     break
@@ -174,7 +164,6 @@ class Misc(object):
                     pass
             else:
                 snd = "Failed to get a post!"
-            print(snd)
             await ctx.send(snd, delete_after=300)
 
     @commands.command()
@@ -184,7 +173,8 @@ class Misc(object):
         with ctx.channel.typing():
             for x in range(5):
                 try:
-                    api = json.loads(await self.fetch('https://a.4cdn.org/{}/catalog.json'.format(board)))
+                    response, data = await self.fetch('https://a.4cdn.org/{}/catalog.json'.format(board))
+                    api = json.loads(data)
                     html = choice(api[0]["threads"])["com"]
                     snd = BeautifulSoup(html, 'html.parser').get_text()
                     break
@@ -192,6 +182,4 @@ class Misc(object):
                     pass
             else:
                 snd = "Failed to get a post!"
-
-            print(snd)
             await ctx.send(snd, delete_after=300)
