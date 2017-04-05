@@ -22,34 +22,39 @@ from .utils import checks, dataIO
 from discord.ext import commands
 import discord
 from functools import wraps
+from copy import copy
+from collections import Counter
+import json
 
-json = dataIO.DataIO()
+from traceback import print_exc
+
+dio = dataIO.DataIO()
 
 
 def server_complex_mode(func):
     @wraps(func)
-    async def predicate(self, ctx, *args):
+    async def predicate(self, ctx, *args, **kwargs):
         if str(ctx.guild.id) not in self.settings or self.settings[str(ctx.message.guild.id)]["mode"] == 0:
             await ctx.send("This command requires complex mode to be enabled!"
-                           " Use the `;inventory servmode` command to switch"
+                           " Use the `;inventory configure` command to switch"
                            " to complex mode, where items are restricted to admin defined")
         else:
-            await func(self, ctx, *args)
+            await func(self, ctx, *args, **kwargs)
 
     return predicate
 
+
 def server_eco_mode(func):
     @wraps(func)
-    async def predicate(self, ctx, *args):
+    async def predicate(self, ctx, *args, **kwargs):
         if str(ctx.guild.id) not in self.settings or \
            self.settings[str(ctx.guild.id)]["mode"] is 0 or \
            self.settings[str(ctx.guild.id)]["eco"] is False:
 
             await ctx.send("To use this command the guild must be in complex mode and have economy enabled!"
-                           " Use `inventory servmode complex` to change servmode to complex"
-                           " and use `inventory useeco True` to use economy features")
+                           " Use `inventory configure` to change servmode to complex and change eco mode")
         else:
-            await func(self, ctx, *args)
+            await func(self, ctx, *args, **kwargs)
 
     return predicate
 
@@ -59,58 +64,137 @@ class RPG(object):
         self.bot = bot
         self.bot.shutdowns.append(self.shutdown)
         file = "invdata/servers.json"
-        if json.is_valid_json(file):
-            self.settings = json.load_json(file)
+        if dio.is_valid_json(file):
+            self.settings = dio.load_json(file)
         else:
             self.settings = dict()
 
         self.awaiting = dict()
+        self.conn = self.bot.conn
 
     async def shutdown(self):
-        json.save_json("invdata/servers.json", self.settings)
+        dio.save_json("invdata/servers.json", self.settings)
 
     def addserv(self, ctx, mode=1, items=None, ecc=False):
         if items is None:
             items = dict()
         self.settings[str(ctx.message.guild.id)] = dict(mode=mode, items=items, eco=ecc, cur="dollars")
 
+    async def get_inv(self, member):
+        values = await self.conn.fetch(
+            """
+            SELECT info FROM userdata WHERE UUID = {member.id};
+            """.format(member=member))
+        if not values:
+            rd = dict(items=dict(), money=0)
+            values = [dict(info=dict())]
+            values[0]["info"][str(member.guild.id)] = rd
+            await self.conn.fetch("""
+                INSERT INTO userdata (UUID, info) VALUES ({member.id}, '{json_data}');
+            """.format(member=member, json_data=json.dumps(values[0]["info"])))
+            return rd
+        else:
+            data = json.loads(values[0]["info"])
+            try:
+                return data[str(member.guild.id)]
+            except KeyError:
+                rd = dict(items=dict(), money=0)
+                data[str(member.guild.id)] = rd
+                await self.conn.fetch("""
+                    INSERT INTO userdata (UUID, info) VALUES ({member.id}, '{json_data}');
+                """.format(member=member, json_data=json.dumps(data)))
+                return rd
+
+    async def add_inv(self, member, *items):
+        values = await self.conn.fetch(
+            """
+            SELECT info FROM userdata WHERE UUID = {member.id};
+            """.format(member=member))
+
+        if not values:
+            rd = dict(items=dict(items), money=0)
+            values = [dict(info=dict())]
+            values[0]["info"][str(member.guild.id)] = rd
+            await self.conn.fetch("""
+                INSERT INTO userdata (UUID, info) VALUES ({member.id}, '{json_data}');
+            """.format(member=member, json_data=json.dumps(values[0]["info"])))
+            return
+        else:
+            data = json.loads(values[0]["info"])
+            if str(member.guild.id) not in data:
+                data[str(member.guild.id)] = dict(items=dict(), money=0)
+            data[str(member.guild.id)]["items"] = Counter(data[str(member.guild.id)]["items"])
+            data[str(member.guild.id)]["items"].update(dict(items))
+
+            print(data)
+            command = """UPDATE userdata
+               SET info = '{json_data}'
+               WHERE UUID = {member.id};""".format(json_data=json.dumps(data), member=member)
+            await self.conn.fetch(command)
+
+    async def add_eco(self, member, amount):
+        command = """SELECT info FROM userdata WHERE UUID = {member.id};""".format(member=member)
+        values = self.conn.fetch(command)
+        if not values:
+            fd = {str(member.guild.id): dict(items=dict(), money=amount)}
+            json_data = json.dumps(fd)
+            command = """INSERT INTO userdata (UUID, info) VALUES ({member.id}, '{json_data}');""".format(member=member, json_data=json_data)
+        else:
+            data = json.loads(values[0]["info"])
+            if str(member.guild.id) not in data:
+                data[str(member.guild.id)] = dict(items=dict(), money=0)
+            data[str(member.guild.id)]["money"] += amount
+            command = """UPDATE userdata
+               SET info = '{json_data}'
+               WHERE UUID = {member.id};""".format(json_data=json.dumps(data), member=member)
+
+        self.conn.fetch(command)
+
+    async def remove_inv(self, member, *items):
+        values = await self.conn.fetch(
+            """
+            SELECT info FROM userdata WHERE UUID = {member.id};
+            """.format(member=member))
+        if not values:
+            rd = dict(items=dict(items), money=0)
+            values = [dict(info=dict())]
+            values[0]["info"][str(member.guild.id)] = rd
+            await self.conn.fetch("""
+                INSERT INTO userdata (UUID, info) VALUES ({member.id}, '{json_data}');
+            """.format(member=member, json_data=json.dumps(values[0]["info"])))
+            return
+        else:
+            data = json.loads(values[0]["info"])
+            if str(member.guild.id) not in data:
+                data[str(member.guild.id)] = dict(items=dict(), money=0)
+            data[str(member.guild.id)]["items"] = Counter(data[str(member.guild.id)]["items"])
+            data[str(member.guild.id)]["items"].subtract(dict(items))
+
+            command = """UPDATE userdata
+               SET info = '{json_data}'
+               WHERE UUID = {member.id};""".format(json_data=json.dumps(data), member=member)
+            await self.conn.fetch(command)
+
     @commands.group(invoke_without_command=True, no_pm=True, aliases=['i', 'inv'])
     async def inventory(self, ctx, *, member: discord.Member=None):
         """Check your or another users inventory
         Usage: ;inventory @User"""
-        if member is None:
-            member = ctx.message.author
+        try:
+            if member is None:
+                member = ctx.message.author
 
-        inv = (await self.get_inv(member))["items"]
-        fmap = map(lambda itm: "x{1} {0}".format(itm, inv[itm]), inv)
-        fmt = "\n".join(fmap)
-        if not fmt:
-            await ctx.send("This inventory is empty!")
-        else:
-            await ctx.send("```\n{}\n```".format(fmt))
-
-    @checks.mod_or_permissions()
-    @inventory.command(no_pm=True)
-    async def servmode(self, ctx, mode: str):
-        """Change the guild inventory mode. Two modes, simple or complex, if simple, items of any name can be given
-        else if the mode is complex, items must be specified"""
-        mode = mode.lower()
-        if str(ctx.message.guild.id) not in self.settings:
-            if mode == "complex":
-                self.addserv(ctx)
-                await ctx.send("Mode changed to complex!")
-                return
+            inv = (await self.get_inv(member))["items"]
+            fmap = map(lambda itm: "x{1} {0}".format(itm, inv[itm]), inv)
+            fmt = "\n".join(fmap)
+            if not fmt:
+                await ctx.send("This inventory is empty!")
             else:
-                await ctx.send("Mode changed to simple!")
-                return
-        if mode == "simple":
-            self.settings[str(ctx.guild.id)]["mode"] = 0
-            await ctx.send("Mode changed to simple!")
-        elif mode == "complex":
-            self.settings[str(ctx.guild.id)]["mode"] = 1
-            await ctx.send("Mode changed to complex!")
-        else:
-            await ctx.send("Invalid mode!")
+                embed = discord.Embed(description=fmt)
+                embed.set_author(name=member.display_name, icon_url=member.avatar_url)
+                embed.set_thumbnail(url="https://mir-s3-cdn-cf.behance.net/project_modules/disp/196b9d18843737.562d0472d523f.png")
+                await ctx.send(embed=embed)
+        except Exception as e:
+            print_exc()
 
     @checks.mod_or_permissions()
     @inventory.command(no_pm=True)
@@ -146,19 +230,39 @@ class RPG(object):
 
     @checks.mod_or_inv()
     @inventory.command(no_pm=True)
+    async def givemoney(self, ctx, amount: int, *members: discord.Member):
+        """Give `amount` of money to listed members"""
+        for member in members:
+            await self.add_eco(member, amount)
+
+        await ctx.send("Money given!")
+
+    @checks.mod_or_inv()
+    @inventory.command(no_pm=True, aliases=["setbal"])
+    async def setbalance(self, ctx, amount: int, *members: discord.Member):
+        """Set the balance of listed members to an `amount`"""
+        for member in members:
+            bal = await self.get_inv(ctx.author)['money']
+            await self.add_eco(member, amount-bal)
+
+    @checks.mod_or_inv()
+    @inventory.command(no_pm=True)
     async def giveitem(self, ctx, item: str, num: int, *members: discord.Member):
         """Give an item a number of times to members
         Usage ;inventory giveitem itemname number *@Users"""
-        num = abs(num)
-        if str(ctx.guild.id) not in self.settings:
-            self.addserv(ctx, mode=False)
-        if self.settings[str(ctx.guild.id)]["mode"] == 0 or item in self.settings[str(ctx.guild.id)]["items"]:
-            for member in members:
-                await self.add_inv(member, (item, num))
-                await ctx.send("Items given!")
+        try:
+            num = abs(num)
+            if str(ctx.guild.id) not in self.settings:
+                self.addserv(ctx, mode=False)
+            if self.settings[str(ctx.guild.id)]["mode"] == 0 or item in self.settings[str(ctx.guild.id)]["items"]:
+                for member in members:
+                    await self.add_inv(member, (item, num))
+                    await ctx.send("Items given!")
 
-        else:
-            await ctx.send("Item is not available! (Add it or switch to simple mode)")
+            else:
+                await ctx.send("Item is not available! (Add it or switch to simple mode)")
+        except:
+            print_exc()
 
     @checks.mod_or_inv()
     @inventory.command(no_pm=True)
@@ -166,64 +270,12 @@ class RPG(object):
         """Take a number of an item from a user (won't go past 0)
         Same command usage as inventory giveitem, inversely"""
         num = abs(num)
-        if self.settings[ctx.message.guild.id]["mode"] == 0 or item in self.settings[ctx.message.guild.id]["items"]:
+        if self.settings[str(ctx.guild.id)]["mode"] == 0 or item in self.settings[str(ctx.guild.id)]["items"]:
             for member in members:
                 await self.remove_inv(member, (item, num))
                 await ctx.send("Items taken!")
         else:
             await ctx.send("Item is not available! (Add it or switch to simple mode)")
-
-    async def get_inv(self, member):
-        file = "invdata/{}.json".format(member.id)
-        if json.is_valid_json(file):
-            data = json.load_json(file)[str(member.guild.id)]
-        else:
-            data = dict(items=dict(), money=0)
-        return data
-
-    async def add_inv(self, member, *items):
-        sid = str(member.guild.id)
-        for item, num in items:
-            file = "invdata/{}.json".format(member.id)
-            if json.is_valid_json(file):
-                data = json.load_json(file)
-            else:
-                data = {sid: dict(money=0, items=dict())}
-            if sid not in data:
-                data[sid] = dict()
-                data[sid]['money'] = 0
-                data[sid]['items'] = dict()
-            if item in data[sid]['items']:
-                data[sid]['items'][item] += num
-            else:
-                data[sid]['items'][item] = num
-            json.save_json(file, data)
-
-    async def remove_inv(self, member, *items):
-        sid = str(member.guild.id)
-        for item, num in items:
-            try:
-                file = "invdata/{}.json".format(member.id)
-                if json.is_valid_json(file):
-                    data = json.load_json(file)
-                else:
-                    data = {sid: dict(money=0, items=dict())}
-                if sid not in data:
-                    data[sid] = dict()
-                    data[sid]['money'] = 0
-                    data[sid]['items'] = dict()
-                if item in data[sid]['items']:
-                    if num > data[sid]['items'][item]:
-                        raise ValueError("User has negative!")
-                    elif num == data[sid]['items'][item]:
-                        del data[sid]['items'][item]
-                    else:
-                        data[sid]['items'][item] -= num
-                else:
-                    data[sid]['items'][item] = 0
-                    raise ValueError("User has negative!")
-            finally:
-                json.save_json(file, data)
 
     @inventory.command(no_pm=True)
     async def offer(self, ctx, other: discord.Member, *items: str):
@@ -355,8 +407,12 @@ class RPG(object):
         if not items:
             await ctx.send("No items to display")
             return
-        fmt = "```\n{}\n```".format("\n".join(items.keys()))
-        await ctx.send(fmt)
+        fmt = "\n".join(items.keys())
+        embed = discord.Embed(description=fmt)
+        embed.set_author(name=ctx.guild.name, icon_url=ctx.guild.icon_url)
+        embed.set_thumbnail(
+            url="https://mir-s3-cdn-cf.behance.net/project_modules/disp/196b9d18843737.562d0472d523f.png")
+        await ctx.send(embed=embed)
 
     @inventory.command(no_pm=True)
     @server_complex_mode
@@ -371,25 +427,6 @@ class RPG(object):
             for key, value in items[item].items():
                 vfmt += "{}: {}".format(key, value)
             await ctx.send("```\n{}\n```".format(vfmt))
-
-    @inventory.command(no_pm=True)
-    @server_complex_mode
-    async def useeco(self, ctx, value: str):
-        """Toggle guild economy features, off by default"""
-        value = value.lower()
-        if value == "true":
-            if str(ctx.guild.id) not in self.settings:
-                self.addserv(ctx, ecc=True)
-            else:
-                self.settings[str(ctx.guild.id)]['eco'] = True
-            await ctx.send("Server economy features set to ON")
-        elif value == "false":
-            if str(ctx.guild.id) in self.settings:
-                self.settings[str(ctx.guild.id)]['eco'] = True
-            await ctx.send("Server economy features set to OFF (default)")
-        else:
-            ctx.send("{} is not a valid option!".format(value))
-            return
 
     @inventory.command(no_pm=True)
     @server_eco_mode
@@ -411,28 +448,130 @@ class RPG(object):
         else:
             await ctx.send("This is not a valid item!")
 
-    async def add_eco(self, member, amount):
-        sid = str(member.guild.id)
-        file = "invdata/{}.json".format(member.id)
-        if json.is_valid_json(file):
-            data = json.load_json(file)
-        else:
-            data = {sid: dict(money=0, items=dict())}
-        if sid not in data:
-            data[sid] = dict(items=dict(), money=0)
-        data[sid]['money'] = int(data[sid]['money']) + amount
-        json.save_json(file, data)
-
     @inventory.command(no_pm=True, aliases=['bal', 'money'])
     @server_eco_mode
     async def balance(self, ctx):
         """Get your balance"""
         udata = await self.get_inv(ctx.author)
         val = udata['money']
-        await ctx.send("You have {} {}".format(val, self.settings[str(ctx.message.guild.id)]['cur']))
+        fmt = "You have {} {}".format(val, self.settings[str(ctx.message.guild.id)]['cur'])
+        embed = discord.Embed(description=fmt)
+        embed.set_author(name=ctx.author.display_name, icon_url=ctx.author.avatar_url)
+        embed.set_thumbnail(
+            url="http://rs795.pbsrc.com/albums/yy232/PixKaruumi/Pixels/Pixels%2096/248.gif~c200")
+        await ctx.send(embed=embed)
 
     @inventory.command(no_pm=True)
     @server_eco_mode
     async def setcurrency(self, ctx, currency: str):
         """Change the servers currency (a name) for example 'Gold'; 'Dollars'; 'Credits'; etc"""
         self.settings[str(ctx.message.guild.id)]['cur'] = currency
+
+    @checks.mod_or_permissions()
+    @inventory.command(no_pm=True, aliases=["conf", "config"])
+    async def configure(self, ctx):
+        """Configure the server's inventory settings"""
+        perms = ctx.guild.me.permissions_in(ctx.channel)
+        if not perms.administrator or perms.manage_messages:
+            await ctx.send("The bot doesn't have enough permissions to use this command! Please use togglemode and toggleeco")
+            return
+
+        if str(ctx.message.guild.id) not in self.settings:
+            self.addserv(ctx, mode=0)
+
+        desc = """To toggle complex inventory emote with :baggage_claim:
+               To toggle eco mode emote with :dollar:
+               :white_check_mark: to save
+               :negative_squared_cross_mark: to close
+               """
+
+        embed = discord.Embed(description=desc)
+        embed.set_author(name=ctx.guild.name, icon_url=ctx.guild.icon_url)
+        embed.add_field(name="Output", value="Empty")
+        embed.set_thumbnail(
+            url="https://mir-s3-cdn-cf.behance.net/project_modules/disp/196b9d18843737.562d0472d523f.png")
+
+        msg = await ctx.send(embed=embed)
+        emotes = ("\U0001F6C4", "\U0001F4B5", "\u2705", "\u274E")
+
+        for emote in emotes:
+            await msg.add_reaction(emote)
+
+        tset = copy(self.settings[str(ctx.guild.id)])
+
+        while True:
+            r, u = await self.bot.wait_for("reaction_add", check=lambda r, u: u is ctx.author, timeout=80)
+
+            if r is None or u is None:
+                await msg.delete()
+                await ctx.send("Menu timed out! ;i configure to go again")
+                return
+
+            if u is not ctx.author:
+                await msg.remove_reaction(r.emoji, u)
+                continue
+
+            if r.emoji not in emotes:
+                msg.remove_reaction(r.emoji, u)
+
+            elif r.emoji == emotes[0]:
+                tset["mode"] = not tset["mode"]
+                mode = "complex" if tset["mode"] else "simple"
+                embed.set_field_at(0, name="Output", value="Server mode switched to {}".format(mode))
+                await msg.edit(embed=embed)
+                await msg.remove_reaction(r.emoji, u)
+            elif r.emoji == emotes[1]:
+                tset["eco"] = not tset["eco"]
+                embed.set_field_at(0, name="Output", value="Using eco is now {}".format(tset["eco"]))
+                await msg.edit(embed=embed)
+                await msg.remove_reaction(r.emoji, u)
+            elif r.emoji == emotes[2]:
+                self.settings[str(ctx.guild.id)].update(tset)
+                embed.set_field_at(0, name="Output", value="Saved")
+                await msg.edit(embed=embed)
+            elif r.emoji == emotes[3]:
+                await msg.delete()
+                await ctx.send("Closed")
+                return
+            else:
+                embed.set_field_at(0, name="Output", value="Invalid Reaction")
+
+            await msg.remove_reaction(r.emoji, u)
+
+    @checks.mod_or_permissions()
+    @inventory.command(no_pm=True, name="settings")
+    async def _settings(self, ctx):
+        """Get the servers settings"""
+        if str(ctx.guild.id) not in self.settings:
+            self.addserv(ctx, mode=0)
+
+        embed = discord.Embed()
+        embed.set_author(name=ctx.guild.name, icon_url=ctx.guild.icon_url)
+        embed.set_thumbnail(
+            url="https://mir-s3-cdn-cf.behance.net/project_modules/disp/196b9d18843737.562d0472d523f.png"
+        )
+        embed.add_field(name="Server Mode", value="Complex mode" if self.settings[str(ctx.guild.id)]["mode"] else "Simple mode")
+        embed.add_field(name="Using Eco", value=str(self.settings[str(ctx.guild.id)]["eco"]))
+
+        items = self.settings[str(ctx.guild.id)]['items']
+        if not items:
+            fmt = "No items"
+        else:
+            fmt = "\n".join(items.keys())
+        embed.add_field(name="Items", value=fmt)
+
+        await ctx.send(embed=embed)
+
+    @checks.mod_or_permissions()
+    @inventory.command(no_pm=True)
+    async def togglemode(self, ctx):
+        """Toggle mode without configure (If bot doesn't have full perms)"""
+        self.settings[str(ctx.guild.id)]["mode"] = not self.settings[str(ctx.guild.id)]["mode"]
+        await ctx.send("Mode toggled to {}".format(self.settings[str(ctx.guild.id)]["mode"]))
+
+    @checks.mod_or_permissions()
+    @inventory.command(no_pm=True)
+    async def toggleeco(self, ctx):
+        """Toggle eco without configure (If bot doesn't have full perms)"""
+        self.settings[str(ctx.guild.id)]["eco"] = not self.settings[str(ctx.guild.id)]["eco"]
+        await ctx.send("Eco toggled to {}".format(self.settings[str(ctx.guild.id)]["eco"]))

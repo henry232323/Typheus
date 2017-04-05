@@ -59,12 +59,14 @@ class Misc(object):
     @commands.command()
     async def info(self, ctx):
         """Bot Info"""
-        result = ['**About Me:**']
-        result.append('- Author: Henry#6174 (Discord ID: 122739797646245899)')
-        result.append('- Library: discord.py (Python)')
-        result.append('- Uptime: {}'.format(await self.bot.get_bot_uptime()))
-        result.append('- Servers: {}'.format(len(self.bot.guilds)))
-        result.append('- Commands Run: {}'.format(sum(self.bot.commands_used.values())))
+        me = ctx.guild.me
+
+        embed = discord.Embed(title="**{}**".format(me.display_name), color=me.top_role.color.value)
+        embed.add_field(name="Author", value='Henry#6174 (Discord ID: 122739797646245899)')
+        embed.add_field(name="Library", value='discord.py (Python)')
+        embed.add_field(name="Uptime", value=await self.bot.get_bot_uptime())
+        embed.add_field(name="Servers", value="{} servers".format(len(self.bot.guilds)))
+        embed.add_field(name="Commands Run", value='{} commands'.format(sum(self.bot.commands_used.values())))
 
         total_members = sum(len(s.members) for s in self.bot.guilds)
         total_online = sum(1 for m in self.bot.get_all_members() if m.status != discord.Status.offline)
@@ -73,11 +75,12 @@ class Misc(object):
         channel_types = Counter(isinstance(c, discord.TextChannel) for c in self.bot.get_all_channels())
         voice = channel_types[False]
         text = channel_types[True]
-        result.append('- Total Members: {} ({} online)'.format(total_members, total_online))
-        result.append('- Unique Members: {} ({} online)'.format(len(unique_members), unique_online))
-        result.append('- {} text channels, {} voice channels'.format(text, voice))
+        embed.add_field(name="Total Members", value='{} ({} online)'.format(total_members, total_online))
+        embed.add_field(name="Unique Members", value='{} ({} online)'.format(len(unique_members), unique_online))
+        embed.add_field(name="Channels", value='{} text channels, {} voice channels'.format(text, voice))
 
-        await ctx.send('\n'.join(result), delete_after=20)
+        embed.set_thumbnail(url=self.bot.user.avatar_url)
+        await ctx.send(delete_after=60, embed=embed)
 
     @commands.command()
     async def totalcmds(self, ctx):
@@ -183,3 +186,11 @@ class Misc(object):
             else:
                 snd = "Failed to get a post!"
             await ctx.send(snd, delete_after=300)
+
+    @commands.command(aliases=["seduce", "seduceme"])
+    async def sm(self, ctx):
+        await ctx.send("http://gifsec.com/wp-content/uploads/GIF/2014/08/GIF-Seduce-me-Seducing-Seduced-TF2-Team-Fortress-2-Spy-Seduce-me-now-GIF.gif", delete_after=60)
+
+    @commands.command()
+    async def donate(self, ctx):
+        await ctx.send("If you'd like, you can donate to me here: https://ko-fi.com/henrys")

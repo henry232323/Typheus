@@ -18,6 +18,13 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
+import io
+import os
+import sys
+import psutil
+import asyncio
+import discord
+from textwrap import indent
 from contextlib import redirect_stdout
 from traceback import format_exc
 from inspect import isawaitable
@@ -35,6 +42,7 @@ class CmdRunner(object):
 
     def __init__(self, bot):
         self.bot = bot
+        self._last_result = None
 
         with open("resources/auth", 'rb') as ath:
             self._key = json.loads(ath.read().decode("utf-8", "replace"))[1]
@@ -52,45 +60,53 @@ class CmdRunner(object):
             except KeyError:
                 raise HTTPException("Missing key or command", 400)
 
+    def cleanup_code(self, content):
+        """Automatically removes code blocks from the code. Borrowed from RoboDanny"""
+        # remove ```py\n```
+        if content.startswith('```') and content.endswith('```'):
+            return '\n'.join(content.split('\n')[1:-1])
+
+        # remove `foo`
+        return content.strip('` \n')
+
+    def get_syntax_error(self, e):
+        if e.text is None:
+            return '\n{0.__class__.__name__}: {0}\n'.format(e)
+        return '\n{0.text}{1:>{0.offset}}\n{2}: {0}'.format(e, '^', type(e).__name__)
+
     async def run_cmd(self, msg):
-        request_handler = self
-        self = self.bot
         msg = msg.replace("\\n", "\n")
-        executor = exec
-        if msg.count('\n') == 0:
-            # single statement, potentially 'eval'
-            try:
-                code = compile(msg, '<repl>', 'eval')
-            except SyntaxError:
-                pass
-            else:
-                executor = eval
 
-        if executor is exec:
-            try:
-                code = compile(msg, '<repl>', 'exec')
-            except SyntaxError as e:
-                return str(e)
+        env = {
+            'bot': self.bot,
+            '_': self._last_result
+        }
 
-        fmt = None
-        stdout = StringIO()
+        env.update(globals())
+
+        body = self.cleanup_code(msg)
+        stdout = io.StringIO()
+
+        to_compile = 'async def func():\n%s' % indent(body, '  ')
 
         try:
-            with redirect_stdout(stdout):
-                result = executor(code)
-                if isawaitable(result):
-                    result = await result
+            exec(to_compile, env)
+        except SyntaxError as e:
+            return self.get_syntax_error(e)
 
+        func = env['func']
+        try:
+            with redirect_stdout(stdout):
+                ret = await func()
         except Exception as e:
             value = stdout.getvalue()
-            fmt = '{}{}'.format(value, format_exc())
-
+            return '\n{}{}\n'.format(value, format_exc())
         else:
             value = stdout.getvalue()
-            if result is not None:
-                fmt = '{}{}'.format(value, result)
-            elif value:
-                fmt = '{}'.format(value)
 
-        if fmt is not None:
-            return fmt
+            if ret is None:
+                if value:
+                    return '\n%s\n' % value
+            else:
+                self._last_result = ret
+                return '\n%s%s\n' % (value, ret)

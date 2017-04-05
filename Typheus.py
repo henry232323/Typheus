@@ -27,10 +27,12 @@ import markovify
 import os
 import sys
 import json
+import asyncpg
 import logging
 import datetime
 from random import sample
 from importlib import reload
+from traceback import print_exc
 from collections import Counter
 
 import cogs
@@ -42,7 +44,9 @@ try:
 except ImportError:
     pass
 
-
+if os.name == "nt":
+    sys.argv.append("debug")
+sys.argv.append("debug")
 class Typheus(commands.Bot):
     def __init__(self, sh_channel=None, **kwargs):
         super().__init__(**kwargs)
@@ -73,7 +77,8 @@ class Typheus(commands.Bot):
                               "Doing stuff",
                               "Contemplating Existence",
                               "Defeating Carthaginians",
-                              "Crushing hamster revolution"
+                              "Crushing hamster revolution",
+                              "Turning Japanese"
                               ]
 
         with open("resources/dave.txt", "rb") as tsf:
@@ -87,6 +92,9 @@ class Typheus(commands.Bot):
         self.logger.addHandler(self.handler)
 
     async def on_ready(self):
+        self.conn = await asyncpg.connect(user='root', password='root',
+                                 database='typheus', host='127.0.0.1')
+
         self.cogs = {"Admin": cogs.Admin.Admin(self),
                      "Misc": cogs.Misc.Misc(self),
                      "ChannelUtils": cogs.ChannelUtils.ChannelUtils(self),
@@ -121,10 +129,11 @@ class Typheus(commands.Bot):
             return
 
         if self.user.mentioned_in(message):
-            try:
-                await self.markov_mention(message)
-            except discord.errors.Forbidden:
-                pass
+            if "@here" not in message.content and "@everyone" not in message.content:
+                try:
+                    await self.markov_mention(message)
+                except discord.errors.Forbidden:
+                    pass
 
         await self.process_commands(message)
 
@@ -152,6 +161,7 @@ class Typheus(commands.Bot):
         elif isinstance(error, commands.CommandInvokeError):
             try:
                 await ctx.send('```python\n'+str(error)+'\n```')
+                print_exc()
             except discord.errors.Forbidden:
                 pass
         elif isinstance(error, commands.CheckFailure):

@@ -81,5 +81,5 @@ def owner_or_permissions(**perms):
 
 def nsfw_channel():
     def predicate(ctx):
-        return "nsfw" in ctx.channel.name
+        return "nsfw" in ctx.channel.name or isinstance(ctx.channel, (discord.DMChannel, discord.GroupChannel))
     return commands.check(predicate)
