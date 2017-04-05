@@ -250,19 +250,16 @@ class RPG(object):
     async def giveitem(self, ctx, item: str, num: int, *members: discord.Member):
         """Give an item a number of times to members
         Usage ;inventory giveitem itemname number *@Users"""
-        try:
-            num = abs(num)
-            if str(ctx.guild.id) not in self.settings:
-                self.addserv(ctx, mode=False)
-            if self.settings[str(ctx.guild.id)]["mode"] == 0 or item in self.settings[str(ctx.guild.id)]["items"]:
-                for member in members:
-                    await self.add_inv(member, (item, num))
-                    await ctx.send("Items given!")
+        num = abs(num)
+        if str(ctx.guild.id) not in self.settings:
+            self.addserv(ctx, mode=False)
+        if self.settings[str(ctx.guild.id)]["mode"] == 0 or item in self.settings[str(ctx.guild.id)]["items"]:
+            for member in members:
+                await self.add_inv(member, (item, num))
+                await ctx.send("Items given!")
 
-            else:
-                await ctx.send("Item is not available! (Add it or switch to simple mode)")
-        except:
-            print_exc()
+        else:
+            await ctx.send("Item is not available! (Add it or switch to simple mode)")
 
     @checks.mod_or_inv()
     @inventory.command(no_pm=True)

@@ -46,7 +46,8 @@ except ImportError:
 
 if os.name == "nt":
     sys.argv.append("debug")
-sys.argv.append("debug")
+
+
 class Typheus(commands.Bot):
     def __init__(self, sh_channel=None, **kwargs):
         super().__init__(**kwargs)
