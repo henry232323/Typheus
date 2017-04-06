@@ -20,15 +20,18 @@
 # DEALINGS IN THE SOFTWARE.
 from .utils import checks, dataIO
 from discord.ext import commands
-import discord
-from functools import wraps
-from copy import copy
+from traceback import print_exc
 from collections import Counter
+from functools import wraps
+from random import choice
+from copy import copy
+import discord
+import asyncio
 import json
 
-from traceback import print_exc
-
 dio = dataIO.DataIO()
+#  TODO: New Help formatter, replace the old one
+#  TODO: Gamble game
 
 
 def server_complex_mode(func):
@@ -71,6 +74,7 @@ class RPG(object):
 
         self.awaiting = dict()
         self.conn = self.bot.conn
+        self.lotteries = dict()
 
     async def shutdown(self):
         dio.save_json("invdata/servers.json", self.settings)
@@ -132,9 +136,12 @@ class RPG(object):
                WHERE UUID = {member.id};""".format(json_data=json.dumps(data), member=member)
             await self.conn.fetch(command)
 
+    async def get_eco(self, member):
+        return (await self.get_inv(member))["money"]
+
     async def add_eco(self, member, amount):
         command = """SELECT info FROM userdata WHERE UUID = {member.id};""".format(member=member)
-        values = self.conn.fetch(command)
+        values = await self.conn.fetch(command)
         if not values:
             fd = {str(member.guild.id): dict(items=dict(), money=amount)}
             json_data = json.dumps(fd)
@@ -148,7 +155,7 @@ class RPG(object):
                SET info = '{json_data}'
                WHERE UUID = {member.id};""".format(json_data=json.dumps(data), member=member)
 
-        self.conn.fetch(command)
+        await self.conn.fetch(command)
 
     async def remove_inv(self, member, *items):
         values = await self.conn.fetch(
@@ -469,7 +476,7 @@ class RPG(object):
     async def configure(self, ctx):
         """Configure the server's inventory settings"""
         perms = ctx.guild.me.permissions_in(ctx.channel)
-        if not perms.administrator or perms.manage_messages:
+        if not perms.manage_messages:
             await ctx.send("The bot doesn't have enough permissions to use this command! Please use togglemode and toggleeco")
             return
 
@@ -497,12 +504,15 @@ class RPG(object):
         tset = copy(self.settings[str(ctx.guild.id)])
 
         while True:
-            r, u = await self.bot.wait_for("reaction_add", check=lambda r, u: u is ctx.author, timeout=80)
-
-            if r is None or u is None:
+            try:
+                r, u = await self.bot.wait_for("reaction_add", check=lambda r, u: r.message.id == msg.id, timeout=80)
+            except asyncio.TimeoutError:
                 await msg.delete()
                 await ctx.send("Menu timed out! ;i configure to go again")
                 return
+
+            if u is ctx.guild.me:
+                continue
 
             if u is not ctx.author:
                 await msg.remove_reaction(r.emoji, u)
@@ -572,3 +582,60 @@ class RPG(object):
         """Toggle eco without configure (If bot doesn't have full perms)"""
         self.settings[str(ctx.guild.id)]["eco"] = not self.settings[str(ctx.guild.id)]["eco"]
         await ctx.send("Eco toggled to {}".format(self.settings[str(ctx.guild.id)]["eco"]))
+
+    @inventory.command(no_pm=True)
+    async def pay(self, ctx, amount: int, other: discord.Member):
+        if await self.get_eco(ctx.author) < amount:
+            await ctx.send("You don't have enough money to use this command!")
+        else:
+            await self.add_eco(ctx.author, -abs(amount))
+            await self.add_eco(other, abs(amount))
+            await ctx.send("{} successfully paid to {}".format(abs(amount), other))
+
+    @commands.group(invoke_without_command=True, no_pm=True, aliases=['lottery'])
+    async def lotto(self, ctx):
+        if ctx.guild.id in self.lotteries:
+            embed = discord.Embed()
+            embed.set_author(name=ctx.guild.name, icon_url=ctx.guild.icon_url)
+            embed.set_thumbnail(
+                url="https://mir-s3-cdn-cf.behance.net/project_modules/disp/196b9d18843737.562d0472d523f.png"
+            )
+            if str(ctx.guild.id) in self.settings:
+                cur = self.settings[str(ctx.guild.id)]["cur"]
+            else:
+                cur = "dollars"
+            for lotto, value in self.lotteries[ctx.guild.id].items():
+                embed.add_field(name=lotto, value="Jackpot: {} {}\n{} players entered".format(value["jackpot"], cur, len(value["players"])))
+        else:
+            await ctx.send("No lotteries currently running!")
+
+    @checks.mod_or_permissions()
+    @lotto.command()
+    async def new(self, ctx, name: str, jackpot: int, time: int):
+        if ctx.guild.id not in self.lotteries:
+            self.lotteries[ctx.guild.id] = dict()
+        current = dict(jackpot=jackpot, players=list(), channel=ctx.channel)
+        self.lotteries[ctx.guild.id][name] = current
+        await ctx.send("Lottery created!")
+        await asyncio.sleep(time)
+        if current["players"]:
+            winner = choice(current["players"])
+            await self.add_eco(winner, current["jackpot"])
+            await current["channel"].send("Lottery {} is now over!\n{} won {}! Congratulations!".format(name, winner.mention, current["jackpot"]))
+        else:
+            await ctx.send("Nobody entered {}! Its over now.".format(current["name"]))
+        del self.lotteries[ctx.guild.id][name]
+
+    @lotto.command(no_pm=True, aliases=["join"])
+    async def enter(self, ctx, name: str):
+        if ctx.guild.id in self.lotteries:
+            if name in self.lotteries[ctx.guild.id]:
+                if ctx.author not in self.lotteries[ctx.guild.id][name]["players"]:
+                    self.lotteries[ctx.guild.id][name]["players"].append(ctx.author)
+                    await ctx.send("Lotto entered!")
+                else:
+                    await ctx.send("You're already in this lotto!")
+            else:
+                await ctx.send("This server has no lotto by that name! See ;lotto")
+        else:
+            await ctx.send("This server has no lottos currently running!")
