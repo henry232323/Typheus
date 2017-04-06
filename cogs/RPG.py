@@ -584,6 +584,7 @@ class RPG(object):
         await ctx.send("Eco toggled to {}".format(self.settings[str(ctx.guild.id)]["eco"]))
 
     @inventory.command(no_pm=True)
+    @server_eco_mode
     async def pay(self, ctx, amount: int, other: discord.Member):
         if await self.get_eco(ctx.author) < amount:
             await ctx.send("You don't have enough money to use this command!")
@@ -593,6 +594,7 @@ class RPG(object):
             await ctx.send("{} successfully paid to {}".format(abs(amount), other))
 
     @commands.group(invoke_without_command=True, no_pm=True, aliases=['lottery'])
+    @server_eco_mode
     async def lotto(self, ctx):
         if ctx.guild.id in self.lotteries:
             embed = discord.Embed()
@@ -611,6 +613,7 @@ class RPG(object):
 
     @checks.mod_or_permissions()
     @lotto.command()
+    @server_eco_mode
     async def new(self, ctx, name: str, jackpot: int, time: int):
         if ctx.guild.id not in self.lotteries:
             self.lotteries[ctx.guild.id] = dict()
@@ -627,6 +630,7 @@ class RPG(object):
         del self.lotteries[ctx.guild.id][name]
 
     @lotto.command(no_pm=True, aliases=["join"])
+    @server_eco_mode
     async def enter(self, ctx, name: str):
         if ctx.guild.id in self.lotteries:
             if name in self.lotteries[ctx.guild.id]:
