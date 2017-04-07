@@ -186,22 +186,19 @@ class RPG(object):
     async def inventory(self, ctx, *, member: discord.Member=None):
         """Check your or another users inventory
         Usage: ;inventory @User"""
-        try:
-            if member is None:
-                member = ctx.message.author
+        if member is None:
+            member = ctx.message.author
 
-            inv = (await self.get_inv(member))["items"]
-            fmap = map(lambda itm: "x{1} {0}".format(itm, inv[itm]), inv)
-            fmt = "\n".join(fmap)
-            if not fmt:
-                await ctx.send("This inventory is empty!")
-            else:
-                embed = discord.Embed(description=fmt)
-                embed.set_author(name=member.display_name, icon_url=member.avatar_url)
-                embed.set_thumbnail(url="https://mir-s3-cdn-cf.behance.net/project_modules/disp/196b9d18843737.562d0472d523f.png")
-                await ctx.send(embed=embed)
-        except Exception as e:
-            print_exc()
+        inv = (await self.get_inv(member))["items"]
+        fmap = map(lambda itm: "x{1} {0}".format(itm, inv[itm]), inv)
+        fmt = "\n".join(fmap)
+        if not fmt:
+            await ctx.send("This inventory is empty!")
+        else:
+            embed = discord.Embed(description=fmt)
+            embed.set_author(name=member.display_name, icon_url=member.avatar_url)
+            embed.set_thumbnail(url="https://mir-s3-cdn-cf.behance.net/project_modules/disp/196b9d18843737.562d0472d523f.png")
+            await ctx.send(embed=embed)
 
     @checks.mod_or_permissions()
     @inventory.command(no_pm=True)
@@ -608,15 +605,20 @@ class RPG(object):
                 cur = "dollars"
             for lotto, value in self.lotteries[ctx.guild.id].items():
                 embed.add_field(name=lotto, value="Jackpot: {} {}\n{} players entered".format(value["jackpot"], cur, len(value["players"])))
+
+            await ctx.send(embed=embed)
         else:
             await ctx.send("No lotteries currently running!")
 
     @checks.mod_or_permissions()
-    @lotto.command()
+    @lotto.command(aliases=["create"])
     @server_eco_mode
     async def new(self, ctx, name: str, jackpot: int, time: int):
         if ctx.guild.id not in self.lotteries:
             self.lotteries[ctx.guild.id] = dict()
+        if name in self.lotteries[ctx.guild.id]:
+            await ctx.send("A lottery of that name already exists!")
+            return
         current = dict(jackpot=jackpot, players=list(), channel=ctx.channel)
         self.lotteries[ctx.guild.id][name] = current
         await ctx.send("Lottery created!")
@@ -626,7 +628,7 @@ class RPG(object):
             await self.add_eco(winner, current["jackpot"])
             await current["channel"].send("Lottery {} is now over!\n{} won {}! Congratulations!".format(name, winner.mention, current["jackpot"]))
         else:
-            await ctx.send("Nobody entered {}! Its over now.".format(current["name"]))
+            await ctx.send("Nobody entered {}! Its over now.".format(name))
         del self.lotteries[ctx.guild.id][name]
 
     @lotto.command(no_pm=True, aliases=["join"])
