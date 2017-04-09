@@ -39,7 +39,8 @@ class ChannelUtils(object):
         for channel in self.current_channels:
             channel.delete()
 
-    @commands.group(aliases=['ch'], no_pm=True)
+    @commands.group(aliases=['ch'])
+    @commands.guild_only()
     async def channel(self, ctx):
         '''Shows ?help channel, refer to that for command usage'''
         if ctx.invoked_subcommand is None:
@@ -47,7 +48,8 @@ class ChannelUtils(object):
             await self.bot.process_commands(ctx.message)
 
     @checks.chcreate_or_permissions(manage_channels=True)
-    @channel.command(aliases=['cr'], no_pm=True)
+    @channel.command(aliases=['cr'])
+    @commands.guild_only()
     async def create(self, ctx, limit: int, *, name: str):
         '''Requires the role of 'Create Channel' Create a temporary text channel,
         where limit is the user limit and name is the name of the channel.
@@ -87,7 +89,8 @@ class ChannelUtils(object):
         except discord.errors.Forbidden as err:
             await ctx.send('`This command is disabled in this guild`')
 
-    @channel.command(no_pm=True)
+    @channel.command()
+    @commands.guild_only()
     async def rename(self, ctx, *, name : str):
         """Rename your voice channel"""
         try:
@@ -103,7 +106,8 @@ class ChannelUtils(object):
         except discord.errors.Forbidden as err:
             await ctx.send('`This command is disabled in this guild`')
 
-    @channel.command(no_pm=True)
+    @channel.command()
+    @commands.guild_only()
     async def limit(self, ctx, *, limit : int):
         """Change your voice channel's user limit"""
         try:
@@ -115,7 +119,8 @@ class ChannelUtils(object):
         except discord.errors.Forbidden:
             await ctx.send('`This command is disabled in this guild`')
 
-    @channel.command(no_pm=True)
+    @channel.command()
+    @commands.guild_only()
     async def delete(self, ctx):
         '''Delete your voice channel'''
         if ctx.message.author in self.current_users[ctx.message.guild]:
@@ -128,7 +133,8 @@ class ChannelUtils(object):
         else:
             ctx.send('`You do not currently have a channel`')
 
-    @channel.command(no_pm=True)
+    @channel.command()
+    @commands.guild_only()
     async def setusers(self, ctx, *, users: discord.Member):
         '''Change the users allowed in the channel'''
         if ctx.message.author in self.current_users[ctx.message.guild]:

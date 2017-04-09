@@ -92,7 +92,7 @@ class RPG(object):
         if not values:
             rd = dict(items=dict(), money=0)
             values = [dict(info=dict())]
-            values[0]["info"][str(member.guild.id)] = rd
+            values = [dict(info={str(member.guild.id): rd})]
             await self.conn.fetch("""
                 INSERT INTO userdata (UUID, info) VALUES ({member.id}, '{json_data}');
             """.format(member=member, json_data=json.dumps(values[0]["info"])))
@@ -118,7 +118,7 @@ class RPG(object):
         if not values:
             rd = dict(items=dict(items), money=0)
             values = [dict(info=dict())]
-            values[0]["info"][str(member.guild.id)] = rd
+            values = [dict(info={str(member.guild.id): rd})]
             await self.conn.fetch("""
                 INSERT INTO userdata (UUID, info) VALUES ({member.id}, '{json_data}');
             """.format(member=member, json_data=json.dumps(values[0]["info"])))
@@ -164,8 +164,7 @@ class RPG(object):
             """.format(member=member))
         if not values:
             rd = dict(items=dict(items), money=0)
-            values = [dict(info=dict())]
-            values[0]["info"][str(member.guild.id)] = rd
+            values = [dict(info={str(member.guild.id): rd})]
             await self.conn.fetch("""
                 INSERT INTO userdata (UUID, info) VALUES ({member.id}, '{json_data}');
             """.format(member=member, json_data=json.dumps(values[0]["info"])))
@@ -182,7 +181,8 @@ class RPG(object):
                WHERE UUID = {member.id};""".format(json_data=json.dumps(data), member=member)
             await self.conn.fetch(command)
 
-    @commands.group(invoke_without_command=True, no_pm=True, aliases=['i', 'inv'])
+    @commands.group(invoke_without_command=True, aliases=['i', 'inv'])
+    @commands.guild_only()
     async def inventory(self, ctx, *, member: discord.Member=None):
         """Check your or another users inventory
         Usage: ;inventory @User"""
@@ -201,8 +201,9 @@ class RPG(object):
             await ctx.send(embed=embed)
 
     @checks.mod_or_permissions()
-    @inventory.command(no_pm=True)
+    @inventory.command()
     @server_complex_mode
+    @commands.guild_only()
     async def additem(self, ctx, name: str, *, data: str):
         """If guild mode is complex, add an item that can be given
         Usage: ;inventory additem itemname *data
@@ -233,7 +234,8 @@ class RPG(object):
         await ctx.send("Added item {}".format(name))
 
     @checks.mod_or_inv()
-    @inventory.command(no_pm=True)
+    @inventory.command()
+    @commands.guild_only()
     async def givemoney(self, ctx, amount: int, *members: discord.Member):
         """Give `amount` of money to listed members"""
         for member in members:
@@ -242,7 +244,8 @@ class RPG(object):
         await ctx.send("Money given!")
 
     @checks.mod_or_inv()
-    @inventory.command(no_pm=True, aliases=["setbal"])
+    @inventory.command(aliases=["setbal"])
+    @commands.guild_only()
     async def setbalance(self, ctx, amount: int, *members: discord.Member):
         """Set the balance of listed members to an `amount`"""
         for member in members:
@@ -250,7 +253,8 @@ class RPG(object):
             await self.add_eco(member, amount-bal)
 
     @checks.mod_or_inv()
-    @inventory.command(no_pm=True)
+    @inventory.command()
+    @commands.guild_only()
     async def giveitem(self, ctx, item: str, num: int, *members: discord.Member):
         """Give an item a number of times to members
         Usage ;inventory giveitem itemname number *@Users"""
@@ -266,7 +270,8 @@ class RPG(object):
             await ctx.send("Item is not available! (Add it or switch to simple mode)")
 
     @checks.mod_or_inv()
-    @inventory.command(no_pm=True)
+    @inventory.command()
+    @commands.guild_only()
     async def takeitem(self, ctx, item: str, num: int, *members: discord.Member):
         """Take a number of an item from a user (won't go past 0)
         Same command usage as inventory giveitem, inversely"""
@@ -278,7 +283,8 @@ class RPG(object):
         else:
             await ctx.send("Item is not available! (Add it or switch to simple mode)")
 
-    @inventory.command(no_pm=True)
+    @inventory.command()
+    @commands.guild_only()
     async def offer(self, ctx, other: discord.Member, *items: str):
         """Send a trade offer to another user
         Usage: ;inventory offer @Henry bananax3 applex2
@@ -286,7 +292,8 @@ class RPG(object):
         include even if just one!"""
         self.awaiting[other] = (ctx, items)
 
-    @inventory.command(no_pm=True)
+    @inventory.command()
+    @commands.guild_only()
     async def respond(self, ctx, other: discord.Member, *items: str):
         """Respond to a trade offer by another user
         Usage: ;inventory respond @Henry grapex8 applex3
@@ -380,7 +387,8 @@ class RPG(object):
             await ctx.send("Trade complete!")
             del self.awaiting[sender]
 
-    @inventory.command(no_pm=True)
+    @inventory.command()
+    @commands.guild_only()
     async def give(self, ctx, other: discord.Member, *items: str):
         """Give items (using itemx# notation) to a member"""
         for item in items:
@@ -400,7 +408,8 @@ class RPG(object):
             await self.remove_inv(ctx.message.author, (split, num))
             await self.add_inv(other, (split, num))
 
-    @inventory.command(no_pm=True)
+    @inventory.command()
+    @commands.guild_only()
     @server_complex_mode
     async def items(self, ctx):
         """See all set items on a guild"""
@@ -415,7 +424,8 @@ class RPG(object):
             url="https://mir-s3-cdn-cf.behance.net/project_modules/disp/196b9d18843737.562d0472d523f.png")
         await ctx.send(embed=embed)
 
-    @inventory.command(no_pm=True)
+    @inventory.command()
+    @commands.guild_only()
     @server_complex_mode
     async def iteminfo(self, ctx, item : str):
         """Get metadata for an item"""
@@ -429,7 +439,8 @@ class RPG(object):
                 vfmt += "{}: {}".format(key, value)
             await ctx.send("```\n{}\n```".format(vfmt))
 
-    @inventory.command(no_pm=True)
+    @inventory.command()
+    @commands.guild_only()
     @server_eco_mode
     async def sell(self, ctx, item: str, num: int):
         """If item has a set value, sell a number of the item"""
@@ -449,7 +460,8 @@ class RPG(object):
         else:
             await ctx.send("This is not a valid item!")
 
-    @inventory.command(no_pm=True, aliases=['bal', 'money'])
+    @inventory.command(aliases=['bal', 'money'])
+    @commands.guild_only()
     @server_eco_mode
     async def balance(self, ctx):
         """Get your balance"""
@@ -462,14 +474,16 @@ class RPG(object):
             url="http://rs795.pbsrc.com/albums/yy232/PixKaruumi/Pixels/Pixels%2096/248.gif~c200")
         await ctx.send(embed=embed)
 
-    @inventory.command(no_pm=True)
+    @inventory.command()
+    @commands.guild_only()
     @server_eco_mode
     async def setcurrency(self, ctx, currency: str):
         """Change the servers currency (a name) for example 'Gold'; 'Dollars'; 'Credits'; etc"""
         self.settings[str(ctx.message.guild.id)]['cur'] = currency
 
     @checks.mod_or_permissions()
-    @inventory.command(no_pm=True, aliases=["conf", "config"])
+    @inventory.command(aliases=["conf", "config"])
+    @commands.guild_only()
     async def configure(self, ctx):
         """Configure the server's inventory settings"""
         perms = ctx.guild.me.permissions_in(ctx.channel)
@@ -543,7 +557,8 @@ class RPG(object):
             await msg.remove_reaction(r.emoji, u)
 
     @checks.mod_or_permissions()
-    @inventory.command(no_pm=True, name="settings")
+    @inventory.command(name="settings")
+    @commands.guild_only()
     async def _settings(self, ctx):
         """Get the servers settings"""
         if str(ctx.guild.id) not in self.settings:
@@ -567,20 +582,23 @@ class RPG(object):
         await ctx.send(embed=embed)
 
     @checks.mod_or_permissions()
-    @inventory.command(no_pm=True)
+    @inventory.command()
+    @commands.guild_only()
     async def togglemode(self, ctx):
         """Toggle mode without configure (If bot doesn't have full perms)"""
         self.settings[str(ctx.guild.id)]["mode"] = not self.settings[str(ctx.guild.id)]["mode"]
         await ctx.send("Mode toggled to {}".format(self.settings[str(ctx.guild.id)]["mode"]))
 
     @checks.mod_or_permissions()
-    @inventory.command(no_pm=True)
+    @inventory.command()
+    @commands.guild_only()
     async def toggleeco(self, ctx):
         """Toggle eco without configure (If bot doesn't have full perms)"""
         self.settings[str(ctx.guild.id)]["eco"] = not self.settings[str(ctx.guild.id)]["eco"]
         await ctx.send("Eco toggled to {}".format(self.settings[str(ctx.guild.id)]["eco"]))
 
-    @inventory.command(no_pm=True)
+    @inventory.command()
+    @commands.guild_only()
     @server_eco_mode
     async def pay(self, ctx, amount: int, other: discord.Member):
         if await self.get_eco(ctx.author) < amount:
@@ -590,7 +608,8 @@ class RPG(object):
             await self.add_eco(other, abs(amount))
             await ctx.send("{} successfully paid to {}".format(abs(amount), other))
 
-    @commands.group(invoke_without_command=True, no_pm=True, aliases=['lottery'])
+    @commands.group(invoke_without_command=True, aliases=['lottery'])
+    @commands.guild_only()
     @server_eco_mode
     async def lotto(self, ctx):
         if ctx.guild.id in self.lotteries:
@@ -612,6 +631,7 @@ class RPG(object):
 
     @checks.mod_or_permissions()
     @lotto.command(aliases=["create"])
+    @commands.guild_only()
     @server_eco_mode
     async def new(self, ctx, name: str, jackpot: int, time: int):
         if ctx.guild.id not in self.lotteries:
@@ -631,7 +651,8 @@ class RPG(object):
             await ctx.send("Nobody entered {}! Its over now.".format(name))
         del self.lotteries[ctx.guild.id][name]
 
-    @lotto.command(no_pm=True, aliases=["join"])
+    @lotto.command(aliases=["join"])
+    @commands.guild_only()
     @server_eco_mode
     async def enter(self, ctx, name: str):
         if ctx.guild.id in self.lotteries:
@@ -645,3 +666,4 @@ class RPG(object):
                 await ctx.send("This server has no lotto by that name! See ;lotto")
         else:
             await ctx.send("This server has no lottos currently running!")
+
