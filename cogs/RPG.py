@@ -544,8 +544,11 @@ class RPG(object):
                 await msg.edit(embed=embed)
                 await msg.remove_reaction(r.emoji, u)
             elif r.emoji == emotes[2]:
-                self.settings[str(ctx.guild.id)].update(tset)
-                embed.set_field_at(0, name="Output", value="Saved")
+                if tset["mode"] == 0 and not tset["eco"]:
+                    embed.set_field_at(0, name="Output", value="For eco to be enabled, the server must be in complex mode")
+                else:
+                    self.settings[str(ctx.guild.id)].update(tset)
+                    embed.set_field_at(0, name="Output", value="Saved")
                 await msg.edit(embed=embed)
             elif r.emoji == emotes[3]:
                 await msg.delete()
