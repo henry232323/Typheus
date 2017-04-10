@@ -160,7 +160,7 @@ class Misc(object):
                     html = choice(api[0]["threads"])["com"]
                     snd = BeautifulSoup(html, 'html.parser').get_text()
                     break
-                except IndexError:
+                except (IndexError, KeyError):
                     pass
             else:
                 snd = "Failed to get a post!"
@@ -183,6 +183,10 @@ class Misc(object):
             else:
                 snd = "Failed to get a post!"
             await ctx.send(snd, delete_after=300)
+            try:
+                ctx.message.delete()
+            except:
+                pass
 
     @commands.command(aliases=["seduce", "seduceme"])
     async def sm(self, ctx):
