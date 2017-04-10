@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/bin/env python3
 # Copyright (c) 2016-2017, henry232323
 #
 # Permission is hereby granted, free of charge, to any person obtaining a
@@ -20,8 +20,8 @@
 # DEALINGS IN THE SOFTWARE.
 
 import discord
-import asyncio
 from discord.ext import commands
+
 from .utils import checks
 
 class ChannelUtils(object):

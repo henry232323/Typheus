@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/bin/env python3
 # Copyright (c) 2016-2017, henry232323
 #
 # Permission is hereby granted, free of charge, to any person obtaining a
@@ -19,16 +19,13 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
 import io
-import re
 import os
 import json
 import base64
-import asyncio
 import discord
 import aiohttp
 import async_timeout
 from time import time
-from html import unescape
 from random import choice
 from cogs.utils import checks
 from collections import Counter
@@ -137,8 +134,8 @@ class Misc(object):
             async with ctx.channel.typing():
                 sprite = "undertale/static/images/" + sprite
                 response, data = await self.fetch('http://ianmccowan.nfshost.com/undertale/submit',
-                                       params={'text': text,
-                                               'moodImg': sprite})
+                                                  params={'text': text,
+                                                          'moodImg': sprite})
                 fp = io.BytesIO(base64.b64decode(data))
                 await ctx.send(file=fp, filename=text + ".png")
 
@@ -192,6 +189,7 @@ class Misc(object):
 
     @commands.command(aliases=["seduce", "seduceme"])
     async def sm(self, ctx):
+        """Sedeuce me"""
         await ctx.send("http://gifsec.com/wp-content/uploads/GIF/2014/08/GIF-Seduce-me-Seducing-Seduced-TF2-Team-Fortress-2-Spy-Seduce-me-now-GIF.gif", delete_after=60)
 
     @commands.command()

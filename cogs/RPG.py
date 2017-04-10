@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/bin/env python3
 # Copyright (c) 2016-2017, henry232323
 #
 # Permission is hereby granted, free of charge, to any person obtaining a
@@ -20,7 +20,7 @@
 # DEALINGS IN THE SOFTWARE.
 from .utils import checks, dataIO
 from discord.ext import commands
-from traceback import print_exc
+# from traceback import print_exc
 from collections import Counter
 from functools import wraps
 from random import choice
@@ -31,7 +31,6 @@ import json
 
 dio = dataIO.DataIO()
 #  TODO: New Help formatter, replace the old one
-#  TODO: Gamble game
 
 
 def server_complex_mode(func):
@@ -63,6 +62,7 @@ def server_eco_mode(func):
 
 
 class RPG(object):
+    """Inventory/Economy related commands"""
     def __init__(self, bot):
         self.bot = bot
         self.bot.shutdowns.append(self.shutdown)
@@ -184,8 +184,9 @@ class RPG(object):
     @commands.group(invoke_without_command=True, aliases=['i', 'inv'])
     @commands.guild_only()
     async def inventory(self, ctx, *, member: discord.Member=None):
-        """Check your or another users inventory
-        Usage: ;inventory @User"""
+        """;help inventory for more information
+        Check your or another users inventory. Usage: ;inventory @User.
+        Includes subcommands for inventory management"""
         if member is None:
             member = ctx.message.author
 
@@ -427,7 +428,7 @@ class RPG(object):
     @inventory.command()
     @commands.guild_only()
     @server_complex_mode
-    async def iteminfo(self, ctx, item : str):
+    async def iteminfo(self, ctx, item: str):
         """Get metadata for an item"""
         servsetting = self.settings[str(ctx.message.guild.id)]
         items = servsetting['items']
@@ -488,7 +489,9 @@ class RPG(object):
         """Configure the server's inventory settings"""
         perms = ctx.guild.me.permissions_in(ctx.channel)
         if not perms.manage_messages:
-            await ctx.send("The bot doesn't have enough permissions to use this command! Please use togglemode and toggleeco")
+            await ctx.send(
+                "The bot doesn't have enough permissions to use this command! Please use togglemode and toggleeco"
+                )
             return
 
         if str(ctx.message.guild.id) not in self.settings:
@@ -545,7 +548,9 @@ class RPG(object):
                 await msg.remove_reaction(r.emoji, u)
             elif r.emoji == emotes[2]:
                 if tset["mode"] == 0 and not tset["eco"]:
-                    embed.set_field_at(0, name="Output", value="For eco to be enabled, the server must be in complex mode")
+                    embed.set_field_at(0,
+                                       name="Output",
+                                       value="For eco to be enabled, the server must be in complex mode")
                 else:
                     self.settings[str(ctx.guild.id)].update(tset)
                     embed.set_field_at(0, name="Output", value="Saved")
@@ -572,8 +577,11 @@ class RPG(object):
         embed.set_thumbnail(
             url="https://mir-s3-cdn-cf.behance.net/project_modules/disp/196b9d18843737.562d0472d523f.png"
         )
-        embed.add_field(name="Server Mode", value="Complex mode" if self.settings[str(ctx.guild.id)]["mode"] else "Simple mode")
-        embed.add_field(name="Using Eco", value=str(self.settings[str(ctx.guild.id)]["eco"]))
+        embed.add_field(name="Server Mode",
+                        value="Complex mode" if self.settings[str(ctx.guild.id)]["mode"] else "Simple mode")
+
+        embed.add_field(name="Using Eco",
+                        value=str(self.settings[str(ctx.guild.id)]["eco"]))
 
         items = self.settings[str(ctx.guild.id)]['items']
         if not items:
@@ -627,7 +635,9 @@ class RPG(object):
             else:
                 cur = "dollars"
             for lotto, value in self.lotteries[ctx.guild.id].items():
-                embed.add_field(name=lotto, value="Jackpot: {} {}\n{} players entered".format(value["jackpot"], cur, len(value["players"])))
+                embed.add_field(name=lotto,
+                                value="Jackpot: {} {}\n{} players entered".format(value["jackpot"],
+                                                                                  cur, len(value["players"])))
 
             await ctx.send(embed=embed)
         else:
