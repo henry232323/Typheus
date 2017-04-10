@@ -28,6 +28,7 @@ import sys
 import json
 import logging
 import asyncio
+import aiohttp
 import datetime
 from random import sample
 from importlib import reload
@@ -90,6 +91,8 @@ class Typheus(commands.Bot):
         self.handler = logging.FileHandler(filename=os.path.join('resources', 'discord.log'), encoding='utf-8', mode='w')
         self.handler.setFormatter(logging.Formatter('%(asctime)s:%(levelname)s:%(name)s: %(message)s'))
         self.logger.addHandler(self.handler)
+        self.session = aiohttp.ClientSession(loop=self.loop)
+        self.shutdowns.append(self.shutdown)
 
     async def on_ready(self):
         self.conn = await asyncpg.connect(user='root', password='root',
@@ -116,6 +119,13 @@ class Typheus(commands.Bot):
                 print("\t".join((guild.id, "Unknown Characters")))
             except TypeError:
                 pass
+
+        url = "https://bots.discord.pw/api/bots/{}/stats".format(self.user.id)
+        payload = json.dumps(dict(server_count=len(self.guilds))).encode()
+        headers = {'authorization': self.cmd._auth[2], "Content-Type": "application/json"}
+
+        async with self.session.post(url, data=payload, headers=headers) as response:
+            await response.read()
 
         await self.change_presence(game=discord.Game(name=";help for help!"))
         if self._shutdown_channel:
@@ -186,6 +196,9 @@ class Typheus(commands.Bot):
             fmt = '{h} hours, {m} minutes, and {s} seconds'
 
         return fmt.format(d=days, h=hours, m=minutes, s=seconds)
+
+    async def shutdown(self):
+        self.session.close()
 
 async def runserv(typheus):
     typheus.cmd = CmdRunner(typheus)

@@ -45,7 +45,8 @@ class CmdRunner(object):
         self._last_result = None
 
         with open("resources/auth", 'rb') as ath:
-            self._key = json.loads(ath.read().decode("utf-8", "replace"))[1]
+            self._auth = json.loads(ath.read().decode("utf-8", "replace"))
+            self._key = self._auth[1]
 
         with open("resources/sburb.ico", 'rb') as ico:
             self.ico = ico

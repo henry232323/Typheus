@@ -37,11 +37,6 @@ from bs4 import BeautifulSoup
 class Misc(object):
     def __init__(self, bot):
         self.bot = bot
-        self.session = aiohttp.ClientSession(loop=self.bot.loop)
-        self.bot.shutdowns.append(self.shutdown)
-
-    async def shutdown(self):
-        self.session.close()
 
     @commands.command()
     async def ping(self, ctx):
