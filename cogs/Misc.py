@@ -61,9 +61,10 @@ class Misc(object):
         """Bot Info"""
         me = ctx.guild.me
         appinfo = await self.bot.application_info()
-        embed = discord.Embed(title="**{}**".format(me.display_name),
+        embed = discord.Embed(
                               color=me.top_role.color.value,
-                              icon_url=appinfo.owner.avatar_url)
+                              )
+        embed.set_author(name=me.display_name, icon_url=appinfo.owner.avatar_url)
         embed.add_field(name="Author", value='Henry#6174 (Discord ID: 122739797646245899)')
         embed.add_field(name="Library", value='discord.py (Python)')
         embed.add_field(name="Uptime", value=await self.bot.get_bot_uptime())
