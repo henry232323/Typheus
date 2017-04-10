@@ -37,6 +37,7 @@ from bs4 import BeautifulSoup
 class Misc(object):
     def __init__(self, bot):
         self.bot = bot
+        self.session = self.bot.session
 
     @commands.command()
     async def ping(self, ctx):
