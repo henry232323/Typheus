@@ -18,17 +18,16 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
-import asyncio
 import discord
-from discord.ext import commands
-
+import asyncpg
 import markovify
+from discord.ext import commands
 
 import os
 import sys
 import json
-import asyncpg
 import logging
+import asyncio
 import datetime
 from random import sample
 from importlib import reload
@@ -94,7 +93,7 @@ class Typheus(commands.Bot):
 
     async def on_ready(self):
         self.conn = await asyncpg.connect(user='root', password='root',
-                                 database='typheus', host='127.0.0.1')
+                                          database='typheus', host='127.0.0.1')
 
         self.cogs = {"Admin": cogs.Admin.Admin(self),
                      "Misc": cogs.Misc.Misc(self),
@@ -103,6 +102,7 @@ class Typheus(commands.Bot):
 
         for cog in self.cogs.values():
             self.add_cog(cog)
+
         # Login info
         print('Logged in as')
         print(self.user.name)

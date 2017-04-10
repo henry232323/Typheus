@@ -33,6 +33,7 @@ from discord.ext import commands
 from binascii import Error as PaddingError
 from bs4 import BeautifulSoup
 
+
 class Misc(object):
     def __init__(self, bot):
         self.bot = bot

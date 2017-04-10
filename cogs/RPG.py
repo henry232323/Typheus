@@ -250,7 +250,7 @@ class RPG(object):
     async def setbalance(self, ctx, amount: int, *members: discord.Member):
         """Set the balance of listed members to an `amount`"""
         for member in members:
-            bal = await self.get_inv(ctx.author)['money']
+            bal = (await self.get_inv(ctx.author))['money']
             await self.add_eco(member, amount-bal)
 
     @checks.mod_or_inv()
@@ -345,8 +345,8 @@ class RPG(object):
                 return
 
             await ctx.send("Checking inventories")
-            oinv = await self.get_inv(other)['items']
-            sinv = await self.get_inv(sender)['items']
+            oinv = (await self.get_inv(other))['items']
+            sinv = (await self.get_inv(sender))['items']
             for item in self.awaiting[sender][1]:
                 split = item.split('x')
                 split, num = "x".join(split[:-1]), abs(int(split[-1]))
@@ -395,7 +395,7 @@ class RPG(object):
         for item in items:
             split = item.split('x')
             split, num = "x".join(split[:-1]), abs(int(split[-1]))
-            sinv = await self.get_inv(ctx.message.author)['items']
+            sinv = (await self.get_inv(ctx.message.author))['items']
             if num <= 0:
                 await ctx.send("Invalid value for number {} of {}".format(num, split))
                 return
