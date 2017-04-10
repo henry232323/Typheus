@@ -615,6 +615,7 @@ class RPG(object):
     @commands.guild_only()
     @server_eco_mode
     async def lotto(self, ctx):
+        """List the currently running lottos. ;help lotto for more info on lotteries"""
         if ctx.guild.id in self.lotteries:
             embed = discord.Embed()
             embed.set_author(name=ctx.guild.name, icon_url=ctx.guild.icon_url)
@@ -637,6 +638,7 @@ class RPG(object):
     @commands.guild_only()
     @server_eco_mode
     async def new(self, ctx, name: str, jackpot: int, time: int):
+        """Create a new lotto, where jackpot is the payout, and time is the running time in seconds"""
         if ctx.guild.id not in self.lotteries:
             self.lotteries[ctx.guild.id] = dict()
         if name in self.lotteries[ctx.guild.id]:
@@ -658,6 +660,7 @@ class RPG(object):
     @commands.guild_only()
     @server_eco_mode
     async def enter(self, ctx, name: str):
+        """Enter the lottery with the given name."""
         if ctx.guild.id in self.lotteries:
             if name in self.lotteries[ctx.guild.id]:
                 if ctx.author not in self.lotteries[ctx.guild.id][name]["players"]:
