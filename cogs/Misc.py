@@ -165,6 +165,10 @@ class Misc(object):
             else:
                 snd = "Failed to get a post!"
             await ctx.send(snd, delete_after=300)
+            try:
+                ctx.message.delete()
+            except:
+                pass
 
     @commands.command()
     @checks.nsfw_channel()
@@ -178,7 +182,7 @@ class Misc(object):
                     html = choice(api[0]["threads"])["com"]
                     snd = BeautifulSoup(html, 'html.parser').get_text()
                     break
-                except IndexError:
+                except (IndexError, KeyError):
                     pass
             else:
                 snd = "Failed to get a post!"
@@ -190,9 +194,17 @@ class Misc(object):
 
     @commands.command(aliases=["seduce", "seduceme"])
     async def sm(self, ctx):
-        """Sedeuce me"""
+        """Seduce me"""
         await ctx.send("http://gifsec.com/wp-content/uploads/GIF/2014/08/GIF-Seduce-me-Seducing-Seduced-TF2-Team-Fortress-2-Spy-Seduce-me-now-GIF.gif", delete_after=60)
 
     @commands.command()
     async def donate(self, ctx):
+        """Donation information"""
         await ctx.send("If you'd like, you can donate to me here: https://ko-fi.com/henrys")
+
+    @commands.command()
+    async def feedback(self, ctx, *, feedback):
+        """Give me some feedback on the bot"""
+        with open("feedback.txt", "a+") as f:
+            f.write(feedback + "\n")
+        await ctx.send("Thank you for the feedback!")

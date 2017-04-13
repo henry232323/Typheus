@@ -24,6 +24,7 @@ from discord.ext import commands
 
 from .utils import checks
 
+
 class ChannelUtils(object):
     '''A utility to mimic Teamspeak mechanics, allowing creation of temporary channels lasting one half hour for users'''
     def __init__(self, bot):
