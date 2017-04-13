@@ -140,6 +140,9 @@ class Typheus(commands.Bot):
         if message.author.bot:
             return
 
+        if "is hiveswap out yet" in message.content.lower():
+            message.channel.send("No!")
+
         if self.user.mentioned_in(message):
             if "@here" not in message.content and "@everyone" not in message.content:
                 try:
