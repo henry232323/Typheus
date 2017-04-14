@@ -53,7 +53,7 @@ class Misc(object):
     @commands.command()
     async def info(self, ctx):
         """Bot Info"""
-        me = ctx.guild.me
+        me = self.bot.user if not ctx.guild else ctx.guild.me
         appinfo = await self.bot.application_info()
         embed = discord.Embed(
                               color=me.top_role.color.value,
@@ -82,7 +82,13 @@ class Misc(object):
     @commands.command()
     async def totalcmds(self, ctx):
         '''Get totals of commands and their number of uses'''
-        await ctx.send('\n'.join("{0}: {1}".format(val[0], val[1]) for val in self.bot.commands_used.items()))
+        embed = discord.Embed(
+
+                              )
+        embed.set_author(name=self.bot.user.name, icon_url=self.bot.user.avatar_url)
+        for val in self.bot.commands_used.items():
+            embed.add_field(name=val[0], value=val[1])
+        await ctx.send(embed=embed)
 
     @commands.command()
     async def source(self, ctx, command: str = None):
