@@ -182,7 +182,7 @@ class RPG(object):
             await self.conn.fetch(command)
 
     @commands.group(invoke_without_command=True, aliases=['i', 'inv'])
-    @checks.no_pm()
+    @commands.guild_only()
     async def inventory(self, ctx, *, member: discord.Member=None):
         """;help inventory for more information
         Check your or another users inventory. Usage: ;inventory @User.
@@ -204,7 +204,7 @@ class RPG(object):
     @checks.mod_or_permissions()
     @inventory.command()
     @server_complex_mode
-    @checks.no_pm()
+    @commands.guild_only()
     async def additem(self, ctx, name: str, *, data: str):
         """If guild mode is complex, add an item that can be given
         Usage: ;inventory additem itemname *data
@@ -236,7 +236,7 @@ class RPG(object):
 
     @checks.mod_or_inv()
     @inventory.command()
-    @checks.no_pm()
+    @commands.guild_only()
     async def givemoney(self, ctx, amount: int, *members: discord.Member):
         """Give `amount` of money to listed members"""
         for member in members:
@@ -246,7 +246,7 @@ class RPG(object):
 
     @checks.mod_or_inv()
     @inventory.command(aliases=["setbal"])
-    @checks.no_pm()
+    @commands.guild_only()
     async def setbalance(self, ctx, amount: int, *members: discord.Member):
         """Set the balance of listed members to an `amount`"""
         for member in members:
@@ -255,7 +255,7 @@ class RPG(object):
 
     @checks.mod_or_inv()
     @inventory.command()
-    @checks.no_pm()
+    @commands.guild_only()
     async def giveitem(self, ctx, item: str, num: int, *members: discord.Member):
         """Give an item a number of times to members
         Usage ;inventory giveitem itemname number *@Users"""
@@ -272,7 +272,7 @@ class RPG(object):
 
     @checks.mod_or_inv()
     @inventory.command()
-    @checks.no_pm()
+    @commands.guild_only()
     async def takeitem(self, ctx, item: str, num: int, *members: discord.Member):
         """Take a number of an item from a user (won't go past 0)
         Same command usage as inventory giveitem, inversely"""
@@ -285,7 +285,7 @@ class RPG(object):
             await ctx.send("Item is not available! (Add it or switch to simple mode)")
 
     @inventory.command()
-    @checks.no_pm()
+    @commands.guild_only()
     async def offer(self, ctx, other: discord.Member, *items: str):
         """Send a trade offer to another user
         Usage: ;inventory offer @Henry bananax3 applex2
@@ -294,7 +294,7 @@ class RPG(object):
         self.awaiting[other] = (ctx, items)
 
     @inventory.command()
-    @checks.no_pm()
+    @commands.guild_only()
     async def respond(self, ctx, other: discord.Member, *items: str):
         """Respond to a trade offer by another user
         Usage: ;inventory respond @Henry grapex8 applex3
@@ -389,7 +389,7 @@ class RPG(object):
             del self.awaiting[sender]
 
     @inventory.command()
-    @checks.no_pm()
+    @commands.guild_only()
     async def give(self, ctx, other: discord.Member, *items: str):
         """Give items (using itemx# notation) to a member"""
         for item in items:
@@ -410,7 +410,7 @@ class RPG(object):
             await self.add_inv(other, (split, num))
 
     @inventory.command()
-    @checks.no_pm()
+    @commands.guild_only()
     @server_complex_mode
     async def items(self, ctx):
         """See all set items on a guild"""
@@ -426,7 +426,7 @@ class RPG(object):
         await ctx.send(embed=embed)
 
     @inventory.command()
-    @checks.no_pm()
+    @commands.guild_only()
     @server_complex_mode
     async def iteminfo(self, ctx, item: str):
         """Get metadata for an item"""
@@ -441,7 +441,7 @@ class RPG(object):
             await ctx.send("```\n{}\n```".format(vfmt))
 
     @inventory.command()
-    @checks.no_pm()
+    @commands.guild_only()
     @server_eco_mode
     async def sell(self, ctx, item: str, num: int):
         """If item has a set value, sell a number of the item"""
@@ -462,7 +462,7 @@ class RPG(object):
             await ctx.send("This is not a valid item!")
 
     @inventory.command(aliases=['bal', 'money'])
-    @checks.no_pm()
+    @commands.guild_only()
     @server_eco_mode
     async def balance(self, ctx):
         """Get your balance"""
@@ -476,7 +476,7 @@ class RPG(object):
         await ctx.send(embed=embed)
 
     @inventory.command()
-    @checks.no_pm()
+    @commands.guild_only()
     @server_eco_mode
     async def setcurrency(self, ctx, currency: str):
         """Change the servers currency (a name) for example 'Gold'; 'Dollars'; 'Credits'; etc"""
@@ -484,7 +484,7 @@ class RPG(object):
 
     @checks.mod_or_permissions()
     @inventory.command(aliases=["conf", "config"])
-    @checks.no_pm()
+    @commands.guild_only()
     async def configure(self, ctx):
         """Configure the server's inventory settings"""
         perms = ctx.guild.me.permissions_in(ctx.channel)
@@ -566,7 +566,7 @@ class RPG(object):
 
     @checks.mod_or_permissions()
     @inventory.command(name="settings")
-    @checks.no_pm()
+    @commands.guild_only()
     async def _settings(self, ctx):
         """Get the servers settings"""
         if str(ctx.guild.id) not in self.settings:
@@ -594,7 +594,7 @@ class RPG(object):
 
     @checks.mod_or_permissions()
     @inventory.command()
-    @checks.no_pm()
+    @commands.guild_only()
     async def togglemode(self, ctx):
         """Toggle mode without configure (If bot doesn't have full perms)"""
         self.settings[str(ctx.guild.id)]["mode"] = not self.settings[str(ctx.guild.id)]["mode"]
@@ -602,14 +602,14 @@ class RPG(object):
 
     @checks.mod_or_permissions()
     @inventory.command()
-    @checks.no_pm()
+    @commands.guild_only()
     async def toggleeco(self, ctx):
         """Toggle eco without configure (If bot doesn't have full perms)"""
         self.settings[str(ctx.guild.id)]["eco"] = not self.settings[str(ctx.guild.id)]["eco"]
         await ctx.send("Eco toggled to {}".format(self.settings[str(ctx.guild.id)]["eco"]))
 
     @inventory.command()
-    @checks.no_pm()
+    @commands.guild_only()
     @server_eco_mode
     async def pay(self, ctx, amount: int, other: discord.Member):
         if await self.get_eco(ctx.author) < amount:
@@ -620,7 +620,7 @@ class RPG(object):
             await ctx.send("{} successfully paid to {}".format(abs(amount), other))
 
     @commands.group(invoke_without_command=True, aliases=['lottery'])
-    @checks.no_pm()
+    @commands.guild_only()
     @server_eco_mode
     async def lotto(self, ctx):
         """List the currently running lottos. ;help lotto for more info on lotteries"""
@@ -645,7 +645,7 @@ class RPG(object):
 
     @checks.mod_or_permissions()
     @lotto.command(aliases=["create"])
-    @checks.no_pm()
+    @commands.guild_only()
     @server_eco_mode
     async def new(self, ctx, name: str, jackpot: int, time: int):
         """Create a new lotto, where jackpot is the payout, and time is the running time in seconds"""
@@ -667,7 +667,7 @@ class RPG(object):
         del self.lotteries[ctx.guild.id][name]
 
     @lotto.command(aliases=["join"])
-    @checks.no_pm()
+    @commands.guild_only()
     @server_eco_mode
     async def enter(self, ctx, name: str):
         """Enter the lottery with the given name."""
