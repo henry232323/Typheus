@@ -99,8 +99,11 @@ class Typheus(commands.Bot):
 
     async def on_ready(self):
         self.remove_command("help")
-        #self.conn = await asyncpg.connect(user='root', password='root',
-        #                                  database='typheus', host='127.0.0.1')
+        if not self.debug:
+            self.conn = await asyncpg.connect(user='root', password='root',
+                                              database='typheus', host='127.0.0.1')
+        else:
+            self.conn = None
 
         self.cogs = {"Admin": cogs.Admin.Admin(self),
                      "Misc": cogs.Misc.Misc(self),

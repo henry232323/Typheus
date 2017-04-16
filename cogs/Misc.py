@@ -295,7 +295,7 @@ https://discordapp.com/oauth2/authorize?client_id=284456340879966231&scope=bot&p
         embed = discord.Embed(description=desc)
         embed.set_author(name=ctx.author.name, icon_url=ctx.author.avatar_url)
         embed.set_thumbnail(url=self.bot.user.avatar_url)
-        embed.set_footer(text=str(ctx.message.created_at))
+        embed.set_footer(text="Made by Henry#6174 " + str(ctx.message.created_at), icon_url=(await self.bot.application_info().owner.avatar_url))
         message = await ctx.author.send(embed=embed)
 
         emotes = {cog.emote: name for name, cog in self.bot.cogs.items() if cog.emote}
@@ -327,18 +327,22 @@ https://discordapp.com/oauth2/authorize?client_id=284456340879966231&scope=bot&p
                 return
 
             embed.clear_fields()
-            fmt = "\t{}: {}"
+            fmt = "{}: {}"
             for command in self.bot.get_cog_commands(emotes[r.emoji]):
-                value = command.help
+                defhelp = command.help
                 if command.qualified_name == "help":
                     continue
                 if isinstance(command, commands.Group):
-                    value = "{}\n__Subcommands:__\n{}".format(value,
-                            "\n".join(fmt.format(x.qualified_name[len(command.qualified_name) + 1:], x.help) for x in command.commands))
+                    value = "{}\n__Subcommands:__\n{}".format(defhelp,
+                            "\n\t".join(fmt.format(x.qualified_name[len(command.qualified_name) + 1:], x.help) for x in command.commands))
+
                     if len(value) >= 1024:
-                        value = "{}\n__Subcommands:__\n{}".format(value,
-                                                                  "\n".join(x.qualified_name[len(command.qualified_name) + 1:] for x in
+                        value = "{}\n__Subcommands:__\n{}".format(defhelp,
+                                                                  "\n\t".join(x.qualified_name[len(command.qualified_name) + 1:] for x in
                                                                             command.commands))
+                else:
+                    value = defhelp
+
                 embed.add_field(name=command.qualified_name, value=value)
 
             await message.edit(embed=embed)

@@ -20,10 +20,10 @@
 # DEALINGS IN THE SOFTWARE.
 from .utils import checks, dataIO
 from discord.ext import commands
-# from traceback import print_exc
+from traceback import print_exc
 from collections import Counter
 from functools import wraps
-from random import choice
+from random import choice, randint
 from copy import copy
 import discord
 import asyncio
@@ -62,7 +62,9 @@ def server_eco_mode(func):
 
 
 class RPG(object):
-    """Inventory/Economy related commands"""
+    """Inventory/Economy related commands. Some commands require certain roles. 
+    Bot Mod, Bot Admin, Bot Inventory. Bot inventory will allow you to give items
+    Bot Mod and Admin can moderate item creation and lotto creation, as well as several others"""
     def __init__(self, bot):
         self.emote = "\U0001F4B5"
         self.bot = bot
@@ -100,13 +102,16 @@ class RPG(object):
         else:
             data = json.loads(values[0]["info"])
             try:
+                for item in data[str(member.guild.id)]["items"]:
+                    if item not in self.settings[str(member.guild.id)]["items"]:
+                        del data[str(member.guild.id)]["items"]["item"]
                 return data[str(member.guild.id)]
             except KeyError:
                 rd = dict(items=dict(), money=0)
                 data[str(member.guild.id)] = rd
                 await self.conn.fetch("""UPDATE userdata
-               SET info = '{json_data}'
-               WHERE UUID = {member.id};""".format(member=member, json_data=json.dumps(data)))
+                SET info = '{json_data}'
+                WHERE UUID = {member.id};""".format(member=member, json_data=json.dumps(data)))
                 return rd
 
     async def add_inv(self, member, *items):
@@ -229,6 +234,19 @@ class RPG(object):
 
         self.settings[str(ctx.guild.id)]['items'][name] = fdict
         await ctx.send("Added item {}".format(name))
+
+    @checks.mod_or_permissions()
+    @inventory.command()
+    @server_complex_mode
+    @checks.no_pm()
+    async def removeitem(self, ctx, name: str):
+        """Remove an item that can be given, inverse of ;i additem"""
+        if name in self.settings[str(ctx.guild.id)]['items']:
+            del self.settings[str(ctx.guild.id)]['items'][name]
+
+            await ctx.send("Item {} removed".format(name))
+        else:
+            await ctx.send("{} is not a valid item!".format(name))
 
     @checks.mod_or_inv()
     @inventory.command()
@@ -473,7 +491,9 @@ class RPG(object):
     @server_eco_mode
     async def setcurrency(self, ctx, currency: str):
         """Change the servers currency for example 'Gold', etc"""
+        old = self.settings[str(ctx.message.guild.id)]['cur']
         self.settings[str(ctx.message.guild.id)]['cur'] = currency
+        await ctx.send("Currency changed from {} to {}".format(old, currency))
 
     @checks.mod_or_permissions()
     @inventory.command(aliases=["conf", "config"])
@@ -655,3 +675,10 @@ class RPG(object):
         else:
             await ctx.send("This server has no lottos currently running!")
 
+
+    @commands.command(aliases=["rollthedice", "dice"])
+    async def rtd(self, ctx, dice: int, sides: int):
+        """Roll a number of dice with given sides"""
+        rolls = [randint(1, sides) for x in range(dice)]
+        msg = "Rolled **{}** ({})".format(sum(rolls), " + ".join(map(lambda x: str(x), rolls)))
+        await ctx.send(msg)
