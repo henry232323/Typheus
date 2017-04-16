@@ -81,7 +81,9 @@ def owner_or_permissions(**perms):
 
 def nsfw_channel():
     def predicate(ctx):
-        return isinstance(ctx.channel, (discord.DMChannel, discord.GroupChannel)) or "nsfw" in ctx.channel.name
+        if not (isinstance(ctx.channel, (discord.DMChannel, discord.GroupChannel)) or "nsfw" in ctx.channel.name.lower()):
+            raise ChannelError("This command can only be used in `nsfw` channels!")
+        return True
     return commands.check(predicate)
 
 def no_pm():
@@ -92,3 +94,8 @@ def no_pm():
             raise commands.NoPrivateMessage('This command cannot be used in private messages.')
         return True
     return commands.check(predicate)
+
+class ChannelError(commands.CommandError):
+    def __init__(self, message):
+        self.__message__ = message
+        super().__init__(message)

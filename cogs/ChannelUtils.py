@@ -28,6 +28,7 @@ from .utils import checks
 class ChannelUtils(object):
     '''A utility to mimic Teamspeak mechanics, allowing creation of temporary channels lasting one half hour for users'''
     def __init__(self, bot):
+        self.emote = "\U0001F4F1"
         self.bot = bot
         self.current_users = dict()
         self.current_channels = dict()
@@ -52,9 +53,9 @@ class ChannelUtils(object):
     @channel.command(aliases=['cr'])
     @checks.no_pm()
     async def create(self, ctx, limit: int, *, name: str):
-        '''Requires the role of 'Create Channel' Create a temporary text channel,
+        '''Requires the role of 'Create Channel' Create a temporary voice channel,
         where limit is the user limit and name is the name of the channel.
-        Set the limit to "0" for no limit. Do ?channel for help'''
+        Set the limit to "0" for no limit.'''
         if ctx.guild not in self.current_users:
             self.current_users[ctx.guild] = list()
             self.current_channels[ctx.guild] = list()

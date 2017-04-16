@@ -37,6 +37,7 @@ from traceback import print_exc
 from collections import Counter
 
 import cogs
+from cogs.utils.checks import ChannelError
 from WebServer import CmdRunner
 
 try:
@@ -62,6 +63,7 @@ class Typheus(commands.Bot):
         self.running = True
         self.webserv = None
         self.cmd = None
+        self.conn = None
         self._shutdown_channel = sh_channel
         self.startup_quips = [
                               "PSI Connect β",
@@ -96,13 +98,15 @@ class Typheus(commands.Bot):
         self.shutdowns.append(self.shutdown)
 
     async def on_ready(self):
-        self.conn = await asyncpg.connect(user='root', password='root',
-                                          database='typheus', host='127.0.0.1')
+        self.remove_command("help")
+        #self.conn = await asyncpg.connect(user='root', password='root',
+        #                                  database='typheus', host='127.0.0.1')
 
         self.cogs = {"Admin": cogs.Admin.Admin(self),
                      "Misc": cogs.Misc.Misc(self),
                      "ChannelUtils": cogs.ChannelUtils.ChannelUtils(self),
-                     "RPG": cogs.RPG.RPG(self)}
+                     "RPG": cogs.RPG.RPG(self),
+                     "NSFW": cogs.NSFW.NSFW(self)}
 
         for cog in self.cogs.values():
             self.add_cog(cog)
@@ -167,7 +171,9 @@ class Typheus(commands.Bot):
         Universal handling for discord errors, will print unknown errors,
         and silently pass Forbidden errors.
         """
-        if isinstance(error, commands.NoPrivateMessage):
+        if isinstance(error, ChannelError):
+            await ctx.send("```py\n{}\n```".format(error.__message__))
+        elif isinstance(error, commands.NoPrivateMessage):
             await ctx.send('This command cannot be used in private messages.')
         elif isinstance(error, commands.DisabledCommand):
             await ctx.send('Sorry. This command is disabled and cannot be used.')
@@ -175,7 +181,7 @@ class Typheus(commands.Bot):
             pass
         elif isinstance(error, commands.CommandInvokeError):
             try:
-                await ctx.send('```python\n'+str(error)+'\n```')
+                await ctx.send('```python\n{}\n```'.format(error))
                 print_exc()
             except discord.errors.Forbidden:
                 pass

@@ -23,10 +23,11 @@ import os
 import json
 import base64
 import discord
-import aiohttp
+import asyncio
 import async_timeout
 from time import time
 from random import choice
+from textwrap import indent
 from cogs.utils import checks
 from collections import Counter
 from discord.ext import commands
@@ -37,6 +38,7 @@ from bs4 import BeautifulSoup
 class Misc(object):
     def __init__(self, bot):
         self.bot = bot
+        self.emote = "\U0001F35F"
         self.session = self.bot.session
 
     @commands.command()
@@ -76,6 +78,8 @@ class Misc(object):
         embed.add_field(name="Unique Members", value='{} ({} online)'.format(len(unique_members), unique_online))
         embed.add_field(name="Channels", value='{} text channels, {} voice channels'.format(text, voice))
 
+
+        embed.set_footer(text=str(ctx.message.created_at))
         embed.set_thumbnail(url=self.bot.user.avatar_url)
         await ctx.send(delete_after=60, embed=embed)
 
@@ -88,6 +92,48 @@ class Misc(object):
         embed.set_author(name=self.bot.user.name, icon_url=self.bot.user.avatar_url)
         for val in self.bot.commands_used.items():
             embed.add_field(name=val[0], value=val[1])
+        embed.set_footer(text=str(ctx.message.created_at))
+        await ctx.send(embed=embed)
+
+    @commands.command(pass_context=True, no_pm=True)
+    async def memberinfo(self, ctx, *, member: discord.Member = None):
+        """
+        Shows info about a member.
+        This cannot be used in private messages. If you don't specify
+        a member then the info returned will be yours.
+        """
+        if member is None:
+            member = ctx.author
+
+        roles = map(lambda x: x.name, member.roles)
+        shared = sum(1 for m in self.bot.get_all_members() if m.id == member.id)
+        voice = member.voice
+        if voice is not None:
+            voice = voice.channel
+            other_people = len(voice.members) - 1
+            voice_fmt = '{} with {} others' if other_people else '{} by themselves'
+            voice = voice_fmt.format(voice.name, other_people)
+        else:
+            voice = 'Not connected.'
+
+        entries = [
+            ('Name', member.name),
+            ('Discriminator', member.discriminator),
+            ('ID', member.id),
+            ('Joined', member.joined_at),
+            ('Created', member.created_at),
+            ('Roles', ', '.join(roles)),
+            ('Servers', '{} shared'.format(shared)),
+            ('Voice', voice),
+            ('Avatar', member.avatar_url),
+        ]
+
+        embed = discord.Embed()
+        embed.set_author(name=member.display_name, icon_url=member.avatar_url)
+        embed.set_thumbnail(url=member.avatar_url)
+        embed.set_footer(text=str(ctx.message.created_at))
+        for name, value in entries:
+            embed.add_field(name=name, value=value)
         await ctx.send(embed=embed)
 
     @commands.command()
@@ -140,7 +186,7 @@ class Misc(object):
                                                   params={'text': text,
                                                           'moodImg': sprite})
                 fp = io.BytesIO(base64.b64decode(data))
-                await ctx.send(file=fp, filename=text + ".png")
+                await ctx.send(file=discord.File(fp, filename=text + ".png"))
 
         except PaddingError:
             await ctx.send("API failure! Error Code: {} (You probably got the image path wrong)".format(response.status))
@@ -214,3 +260,85 @@ class Misc(object):
         with open("feedback.txt", "a+") as f:
             f.write(feedback + "\n")
         await ctx.send("Thank you for the feedback!")
+
+    @commands.command()
+    async def help(self, ctx, *command):
+        if command:
+            fmt = "**{}**: _{}_"
+            parts = list(command)
+            main = parts.pop(0)
+            command = discord.utils.get(self.bot.commands, name=main)
+            if not command:
+                await ctx.send("Invalid command!")
+                return
+            if parts:
+                subcommand = discord.utils.get(command.commands, name=parts.pop(0))
+                if not subcommand:
+                    await ctx.send("Invalid subcommand!")
+                    return
+                value = "**;{}**\n{}".format(subcommand.signature, subcommand.help)
+            elif isinstance(command, commands.Group):
+                dfmt = indent("\n".join(fmt.format(x.qualified_name[len(command.qualified_name) + 1:], x.help) for x in command.commands), prefix="\t")
+                value = "**{0}**\n_;{3}_\n{1}\n__Subcommands:__\n{2}".format(main.upper(), command.help, dfmt, command.signature)
+            else:
+                value = "**;{}**\n{}".format(command.signature, command.help)
+
+            await ctx.send(value)
+            return
+
+        desc = """
+Typheus, a little discord bot by Henry#6174
+https://discordapp.com/oauth2/authorize?client_id=284456340879966231&scope=bot&permissions=305196074
+;help {{command}} for more info on a command
+{}
+""".format("\n".join("{}: {}".format(n, c.emote) for n, c in self.bot.cogs.items() if c.emote))
+        embed = discord.Embed(description=desc)
+        embed.set_author(name=ctx.author.name, icon_url=ctx.author.avatar_url)
+        embed.set_thumbnail(url=self.bot.user.avatar_url)
+        embed.set_footer(text=str(ctx.message.created_at))
+        message = await ctx.author.send(embed=embed)
+
+        emotes = {cog.emote: name for name, cog in self.bot.cogs.items() if cog.emote}
+        emotes["\u274E"] = "EXIT"
+        for emote in emotes:
+            await message.add_reaction(emote)
+
+        while True:
+            try:
+                r, u = await self.bot.wait_for("reaction_add", check=lambda r, u: r.message.id == message.id, timeout=80)
+            except asyncio.TimeoutError:
+                await message.delete()
+                await ctx.send("Menu timed out! ;help to go again")
+                return
+
+            if u.id == self.bot.user.id:
+                continue
+
+            try:
+                await message.remove_reaction(r.emoji, u)
+            except:
+                pass
+
+            if r.emoji not in emotes:
+                continue
+
+            if emotes[r.emoji] == "EXIT":
+                await message.delete()
+                return
+
+            embed.clear_fields()
+            fmt = "\t{}: {}"
+            for command in self.bot.get_cog_commands(emotes[r.emoji]):
+                value = command.help
+                if command.qualified_name == "help":
+                    continue
+                if isinstance(command, commands.Group):
+                    value = "{}\n__Subcommands:__\n{}".format(value,
+                            "\n".join(fmt.format(x.qualified_name[len(command.qualified_name) + 1:], x.help) for x in command.commands))
+                    if len(value) >= 1024:
+                        value = "{}\n__Subcommands:__\n{}".format(value,
+                                                                  "\n".join(x.qualified_name[len(command.qualified_name) + 1:] for x in
+                                                                            command.commands))
+                embed.add_field(name=command.qualified_name, value=value)
+
+            await message.edit(embed=embed)

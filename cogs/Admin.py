@@ -36,6 +36,7 @@ from contextlib import redirect_stdout
 
 class Admin(object):
     def __init__(self, bot):
+        self.emote = None
         self.bot = bot
         self._last_result = None
 
