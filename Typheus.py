@@ -48,6 +48,8 @@ except ImportError:
 
 if os.name == "nt":
     sys.argv.append("debug")
+if os.getcwd().endswith("pytest"):
+    sys.argv.append("debug")
 
 
 class Typheus(commands.Bot):
@@ -99,7 +101,7 @@ class Typheus(commands.Bot):
 
     async def on_ready(self):
         self.remove_command("help")
-        if not self.debug:
+        if not os.name == "nt":
             self.conn = await asyncpg.connect(user='root', password='root',
                                               database='typheus', host='127.0.0.1')
         else:
@@ -226,7 +228,8 @@ def main():
     loop = asyncio.get_event_loop()
     prefix = ';' if 'debug' not in sys.argv else '$'
     invlink = "https://discordapp.com/oauth2/authorize?client_id=284456340879966231&scope=bot&permissions=305196074"
-    description = "Typheus, a little discord bot by Henry#6174\n{invlink}".format(invlink=invlink)
+    servinv = "https://discord.gg/UYJb8fQ"
+    description = "Typheus, a little discord bot by Henry#6174\n**Add to your server**: {}\n**Support Server**: {}".format(invlink, servinv)
     async def starter():
         typheus = Typheus(
             loop=loop,

@@ -86,9 +86,7 @@ class Misc(object):
     @commands.command()
     async def totalcmds(self, ctx):
         '''Get totals of commands and their number of uses'''
-        embed = discord.Embed(
-
-                              )
+        embed = discord.Embed()
         embed.set_author(name=self.bot.user.name, icon_url=self.bot.user.avatar_url)
         for val in self.bot.commands_used.items():
             embed.add_field(name=val[0], value=val[1])
@@ -288,14 +286,15 @@ class Misc(object):
 
         desc = """
 Typheus, a little discord bot by Henry#6174
-https://discordapp.com/oauth2/authorize?client_id=284456340879966231&scope=bot&permissions=305196074
+**Add to your server:** https://discordapp.com/oauth2/authorize?client_id=284456340879966231&scope=bot&permissions=305196074
+**Join the Support Server:** https://discord.gg/UYJb8fQ
 ;help {{command}} for more info on a command
 {}
 """.format("\n".join("{}: {}".format(n, c.emote) for n, c in self.bot.cogs.items() if c.emote))
         embed = discord.Embed(description=desc)
         embed.set_author(name=ctx.author.name, icon_url=ctx.author.avatar_url)
         embed.set_thumbnail(url=self.bot.user.avatar_url)
-        embed.set_footer(text="Made by Henry#6174 " + str(ctx.message.created_at), icon_url=(await self.bot.application_info().owner.avatar_url))
+        embed.set_footer(text="Made by Henry#6174 " + str(ctx.message.created_at), icon_url=(await self.bot.application_info()).owner.avatar_url)
         message = await ctx.author.send(embed=embed)
 
         emotes = {cog.emote: name for name, cog in self.bot.cogs.items() if cog.emote}

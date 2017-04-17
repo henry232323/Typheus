@@ -85,9 +85,9 @@ class RPG(object):
     def addserv(self, ctx, mode=1, items=None, ecc=False):
         if items is None:
             items = dict()
-        self.settings[str(ctx.message.guild.id)] = dict(mode=mode, items=items, eco=ecc, cur="dollars")
+        self.settings[str(ctx.message.guild.id)] = dict(mode=mode, items=items, eco=ecc, cur="dollars", lootboxes=dict())
 
-    async def get_inv(self, member):
+    async def get_full_inv(self, member):
         values = await self.conn.fetch(
             """
             SELECT info FROM userdata WHERE UUID = {member.id};
@@ -98,91 +98,61 @@ class RPG(object):
             await self.conn.fetch("""
                 INSERT INTO userdata (UUID, info) VALUES ({member.id}, '{json_data}');
             """.format(member=member, json_data=json.dumps(values[0]["info"])))
-            return rd
+            return values[0]
         else:
             data = json.loads(values[0]["info"])
             try:
-                for item in data[str(member.guild.id)]["items"]:
-                    if item not in self.settings[str(member.guild.id)]["items"]:
+                for item, value in data[str(member.guild.id)]["items"].items():
+                    if value is 0:
                         del data[str(member.guild.id)]["items"]["item"]
-                return data[str(member.guild.id)]
+
             except KeyError:
+                print_exc()
                 rd = dict(items=dict(), money=0)
                 data[str(member.guild.id)] = rd
-                await self.conn.fetch("""UPDATE userdata
-                SET info = '{json_data}'
-                WHERE UUID = {member.id};""".format(member=member, json_data=json.dumps(data)))
-                return rd
+
+            await self.conn.fetch("""UPDATE userdata
+            SET info = '{json_data}'
+            WHERE UUID = {member.id};""".format(member=member, json_data=json.dumps(data)))
+
+        return data
+
+    async def get_inv(self, member):
+        return (await self.get_full_inv(member))[str(member.guild.id)]
 
     async def add_inv(self, member, *items):
-        values = await self.conn.fetch(
-            """
-            SELECT info FROM userdata WHERE UUID = {member.id};
-            """.format(member=member))
+        data = await self.get_full_inv(member)
+        data[str(member.guild.id)]["items"] = Counter(data[str(member.guild.id)]["items"])
+        data[str(member.guild.id)]["items"].update(dict(items))
 
-        if not values:
-            rd = dict(items=dict(items), money=0)
-            values = [dict(info={str(member.guild.id): rd})]
-            await self.conn.fetch("""
-                INSERT INTO userdata (UUID, info) VALUES ({member.id}, '{json_data}');
-            """.format(member=member, json_data=json.dumps(values[0]["info"])))
-            return
-        else:
-            data = json.loads(values[0]["info"])
-            if str(member.guild.id) not in data:
-                data[str(member.guild.id)] = dict(items=dict(), money=0)
-            data[str(member.guild.id)]["items"] = Counter(data[str(member.guild.id)]["items"])
-            data[str(member.guild.id)]["items"].update(dict(items))
-
-            command = """UPDATE userdata
-               SET info = '{json_data}'
-               WHERE UUID = {member.id};""".format(json_data=json.dumps(data), member=member)
-            await self.conn.fetch(command)
+        command = """UPDATE userdata
+           SET info = '{json_data}'
+           WHERE UUID = {member.id};""".format(json_data=json.dumps(data), member=member)
+        await self.conn.fetch(command)
 
     async def get_eco(self, member):
         return (await self.get_inv(member))["money"]
 
     async def add_eco(self, member, amount):
-        command = """SELECT info FROM userdata WHERE UUID = {member.id};""".format(member=member)
-        values = await self.conn.fetch(command)
-        if not values:
-            fd = {str(member.guild.id): dict(items=dict(), money=amount)}
-            json_data = json.dumps(fd)
-            command = """INSERT INTO userdata (UUID, info) VALUES ({member.id}, '{json_data}');""".format(member=member, json_data=json_data)
-        else:
-            data = json.loads(values[0]["info"])
-            if str(member.guild.id) not in data:
-                data[str(member.guild.id)] = dict(items=dict(), money=0)
-            data[str(member.guild.id)]["money"] += amount
-            command = """UPDATE userdata
-               SET info = '{json_data}'
-               WHERE UUID = {member.id};""".format(json_data=json.dumps(data), member=member)
+        data = await self.get_full_inv(member)
+        data[str(member.guild.id)]["money"] += amount
+        if data[str(member.guild.id)]["money"] < 0:
+            raise ValueError("Cannot take more than user has")
+        command = """UPDATE userdata
+           SET info = '{json_data}'
+           WHERE UUID = {member.id};""".format(json_data=json.dumps(data), member=member)
 
         await self.conn.fetch(command)
 
     async def remove_inv(self, member, *items):
-        values = await self.conn.fetch(
-            """
-            SELECT info FROM userdata WHERE UUID = {member.id};
-            """.format(member=member))
-        if not values:
-            rd = dict(items=dict(items), money=0)
-            values = [dict(info={str(member.guild.id): rd})]
-            await self.conn.fetch("""
-                INSERT INTO userdata (UUID, info) VALUES ({member.id}, '{json_data}');
-            """.format(member=member, json_data=json.dumps(values[0]["info"])))
-            return
-        else:
-            data = json.loads(values[0]["info"])
-            if str(member.guild.id) not in data:
-                data[str(member.guild.id)] = dict(items=dict(), money=0)
-            data[str(member.guild.id)]["items"] = Counter(data[str(member.guild.id)]["items"])
-            data[str(member.guild.id)]["items"].subtract(dict(items))
+        data = await self.get_full_inv(member)
+        data[str(member.guild.id)]["items"] = Counter(data[str(member.guild.id)]["items"])
+        data[str(member.guild.id)]["items"].subtract(dict(items))
 
-            command = """UPDATE userdata
-               SET info = '{json_data}'
-               WHERE UUID = {member.id};""".format(json_data=json.dumps(data), member=member)
-            await self.conn.fetch(command)
+        command = """UPDATE userdata
+           SET info = '{json_data}'
+           WHERE UUID = {member.id};""".format(json_data=json.dumps(data), member=member)
+        await self.conn.fetch(command)
 
     @commands.group(invoke_without_command=True, aliases=['i', 'inv'])
     @checks.no_pm()
@@ -312,6 +282,8 @@ class RPG(object):
             await ctx.send("Both parties say ;accept @Other to accept the trade or !decline @Other to decline")
 
             def check(message):
+                if not (message.channel == ctx.channel):
+                    return False
                 if not message.content.startswith((";accept", ";decline",)):
                     return False
                 if message.author in (other, sender):
@@ -322,8 +294,8 @@ class RPG(object):
                 else:
                     return False
 
-            msg = await self.bot.wait_for_message(timeout=30,
-                                                  channel=ctx.message.channel,
+            msg = await self.bot.wait_for("message",
+                                                  timeout=30,
                                                   check=check)
 
             await ctx.send("Response one received!")
@@ -337,9 +309,9 @@ class RPG(object):
                 del self.awaiting[sender]
                 return
 
-            msg2 = await self.bot.wait_for_message(timeout=30,
-                                                   channel=ctx.message.channel,
-                                                   check=check)
+            msg2 = await self.bot.wait_for("message",
+                                           timeout=30,
+                                           check=check)
 
             await ctx.send("Response two received!")
 
@@ -445,10 +417,15 @@ class RPG(object):
         if item not in items:
             await ctx.send("That is not a valid item!")
         else:
-            vfmt = ""
+            embed = discord.Embed(title=item)
+            embed.set_author(name=ctx.guild.name, icon_url=ctx.guild.icon_url)
+            embed.set_thumbnail(
+                url="https://mir-s3-cdn-cf.behance.net/project_modules/disp/196b9d18843737.562d0472d523f.png")
+            embed.set_footer(text=str(ctx.message.created_at))
+
             for key, value in items[item].items():
-                vfmt += "{}: {}".format(key, value)
-            await ctx.send("```\n{}\n```".format(vfmt))
+                embed.add_field(name=key, value=value)
+            await ctx.send(embed=embed)
 
     @inventory.command()
     @checks.no_pm()
@@ -471,13 +448,36 @@ class RPG(object):
         else:
             await ctx.send("This is not a valid item!")
 
+    @inventory.command()
+    @checks.no_pm()
+    @server_eco_mode
+    async def buy(self, ctx, item: str, num: int):
+        """If item has a set value, sell x of the item"""
+        try:
+            num = abs(num)
+            settings = self.settings[str(ctx.guild.id)]
+            if item in settings['items']:
+                if settings['items'][item].get("value", None):
+                    try:
+                        val = int(settings['items'][item].get("value", None)) * num
+                        await self.add_inv(ctx.author, (item, num))
+                        await self.add_eco(ctx.author, -val)
+                        await ctx.send("{} {}s bought for ${}".format(num, item, val))
+                    except IndexError:
+                        await ctx.send("You cant afford to buy this!")
+                else:
+                    await ctx.send("This item has no set value!")
+            else:
+                await ctx.send("This is not a valid item!")
+        except:
+            print_exc()
+
     @inventory.command(aliases=['bal', 'money'])
     @checks.no_pm()
     @server_eco_mode
     async def balance(self, ctx):
         """Get your balance"""
-        udata = await self.get_inv(ctx.author)
-        val = udata['money']
+        val = await self.get_eco(ctx.author)
         fmt = "You have {} {}".format(val, self.settings[str(ctx.message.guild.id)]['cur'])
         embed = discord.Embed(description=fmt)
         embed.set_author(name=ctx.author.display_name, icon_url=ctx.author.avatar_url)
@@ -682,3 +682,85 @@ class RPG(object):
         rolls = [randint(1, sides) for x in range(dice)]
         msg = "Rolled **{}** ({})".format(sum(rolls), " + ".join(map(lambda x: str(x), rolls)))
         await ctx.send(msg)
+
+    @checks.no_pm()
+    @commands.group(invoke_without_command=True, aliases=['box'])
+    @server_eco_mode
+    async def lootbox(self, ctx):
+        if self.settings[str(ctx.guild.id)]["lootboxes"]:
+            embed = discord.Embed()
+            embed.set_author(name=ctx.guild.name, icon_url=ctx.guild.icon_url)
+            embed.set_thumbnail(
+                url="https://mir-s3-cdn-cf.behance.net/project_modules/disp/196b9d18843737.562d0472d523f.png"
+            )
+            fmt = "{}: {}%"
+            for box, data in self.settings[str(ctx.guild.id)]["lootboxes"].items():
+                total = sum(data["items"].values())
+                value = "Cost: {}\n\t".format(data["cost"]) + "\n\t".join(fmt.format(item, (value/total)*100) for item, value in data["items"].items())
+                embed.add_field(name=box,
+                                value=value)
+
+            embed.set_footer(text=str(ctx.message.created_at))
+
+            await ctx.send(embed=embed)
+        else:
+            await ctx.send("No current lootboxes")
+
+    @checks.mod_or_permissions()
+    @checks.no_pm()
+    @lootbox.command(name="create", aliases=["new"])
+    @server_eco_mode
+    async def _create(self, ctx, name: str, cost: int, *items: str):
+        """Create a new lootbox, under the given `name` for the given cost
+        Use {item}x{#} notation to add items with {#} weight
+        Weight being an integer. For example:
+        bananax2 orangex3. The outcome of the box will be
+        Random Choice[banana, banana, orange, orange, orange]"""
+
+        if name in self.settings[str(ctx.guild.id)]["lootboxes"]:
+            await ctx.send("Lootbox already exists, updating...")
+
+        winitems = {}
+        for item in items:
+            split = item.split('x')
+            split, num = "x".join(split[:-1]), abs(int(split[-1]))
+            winitems.update({split: num})
+
+
+        self.settings[str(ctx.guild.id)]["lootboxes"][name] = dict(cost=cost, items=winitems)
+
+        await ctx.send("Lootbox successfully created")
+
+    @checks.no_pm()
+    @lootbox.command(name="buy")
+    @server_eco_mode
+    async def _buy(self, ctx, name: str):
+        try:
+            box = self.settings[str(ctx.guild.id)]["lootboxes"][name]
+        except KeyError:
+            await ctx.send("That is not a valid lootbox")
+            return
+
+        bal = await self.get_eco(ctx.author)
+        if bal < box["cost"]:
+            await ctx.send("You cant afford this box")
+            return
+
+        await self.add_eco(ctx.author, box["cost"])
+        winitems = []
+        for item, amount in box["items"].items():
+            winitems += [item] * amount
+
+        result = choice(winitems)
+        await self.add_inv(ctx.author, (result, 1))
+        await ctx.send("You won a(n) {}".format(result))
+
+    @checks.no_pm()
+    @lootbox.command(name="delete", aliases=["remove"])
+    @server_eco_mode
+    async def _delete(self, ctx, name: str):
+        if name in self.settings[str(ctx.guild.id)]["lootboxes"]:
+            del self.settings[str(ctx.guild.id)]["lootboxes"][name]
+            await ctx.send("Loot box removed")
+        else:
+            await ctx.send("Invalid loot box")
