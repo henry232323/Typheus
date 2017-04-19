@@ -27,6 +27,7 @@ from discord.ext import commands
 import os
 import sys
 import json
+import psutil
 import logging
 import asyncio
 import aiohttp
@@ -59,6 +60,8 @@ class Typheus(commands.Bot):
         self.lounge_id = 166349353999532035
         self.uptime = datetime.datetime.utcnow()
         self.commands_used = Counter()
+        self.server_commands = Counter()
+        self.socket_stats = Counter()
         self.debug = "debug" in sys.argv
         self.shutdowns = []
         self.cogs = None
@@ -162,8 +165,9 @@ class Typheus(commands.Bot):
         await self.process_commands(message)
 
     async def on_command(self, ctx):
-        command = ctx.command
-        self.commands_used[command.name] += 1
+        self.server_commands[ctx.guild.id] += 1
+        if not (self.server_commands[ctx.guild.id] % 50):
+            await ctx.send("If you like the utilities this bot provides, consider buying me a coffee https://ko-fi.com/henrys")
         if isinstance(ctx.message.channel, (discord.DMChannel, discord.GroupChannel)):  # Log command usage in discord logs
             destination = 'Private Message'
         else:
@@ -193,6 +197,16 @@ class Typheus(commands.Bot):
         elif isinstance(error, commands.CheckFailure):
             await ctx.send("You do not have permission to use this command or it is disabled here!")
 
+    async def on_socket_response(self, msg):
+        self.socket_stats[msg.get('t')] += 1
+
+    async def on_member_join(self, member):
+        RPG = self.cogs["RPG"]
+        if str(member.guild.id) in RPG.settings:
+            amount = RPG.settings[str(member.guild.id)]["start"]
+            if amount:
+                await RPG.add_eco(member, amount)
+
     async def markov_mention(self, message):
         response = self._markov_model.make_sentence(tries=100)
         await message.channel.send(response)
@@ -211,6 +225,11 @@ class Typheus(commands.Bot):
             fmt = '{h} hours, {m} minutes, and {s} seconds'
 
         return fmt.format(d=days, h=hours, m=minutes, s=seconds)
+
+    async def get_ram(self):
+        """Get the bot's RAM usage info."""
+        mu = psutil.Process(os.getpid()).memory_info().rss
+        return mu / 1_000_000
 
     async def shutdown(self):
         self.session.close()

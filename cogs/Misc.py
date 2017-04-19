@@ -21,9 +21,11 @@
 import io
 import os
 import json
+import psutil
 import base64
 import discord
 import asyncio
+import datetime
 import async_timeout
 from time import time
 from random import choice
@@ -78,8 +80,14 @@ class Misc(object):
         embed.add_field(name="Unique Members", value='{} ({} online)'.format(len(unique_members), unique_online))
         embed.add_field(name="Channels", value='{} text channels, {} voice channels'.format(text, voice))
 
+        embed.add_field(name="CPU Percentage", value="{}%".format(psutil.Process(os.getpid()).cpu_percent()))
+        embed.add_field(name="Memory Usage", value="{0:.2f} MB".format(await self.bot.get_ram()))
+        embed.add_field(name="Observed Events", value=sum(self.bot.socket_stats.values()))
 
-        embed.set_footer(text=str(ctx.message.created_at))
+        embed.add_field(name="Source", value="https://github.com/henry232323/Typheus")
+
+
+        embed.set_footer(text='Made with discord.py', icon_url='http://i.imgur.com/5BFecvA.png')
         embed.set_thumbnail(url=self.bot.user.avatar_url)
         await ctx.send(delete_after=60, embed=embed)
 
@@ -258,6 +266,16 @@ class Misc(object):
         with open("feedback.txt", "a+") as f:
             f.write(feedback + "\n")
         await ctx.send("Thank you for the feedback!")
+
+    @commands.command(hidden=True)
+    async def socketstats(self, ctx):
+        delta = datetime.datetime.utcnow() - self.bot.uptime
+        minutes = delta.total_seconds() / 60
+        total = sum(self.bot.socket_stats.values())
+        cpm = total / minutes
+
+        fmt = '%s socket events observed (%.2f/minute):\n%s'
+        await ctx.send(fmt % (total, cpm, self.bot.socket_stats))
 
     @commands.command()
     async def help(self, ctx, *command):

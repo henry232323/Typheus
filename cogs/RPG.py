@@ -30,13 +30,12 @@ import asyncio
 import json
 
 dio = dataIO.DataIO()
-#  TODO: New Help formatter, replace the old one
 
 
 def server_complex_mode(func):
     @wraps(func)
     async def predicate(self, ctx, *args, **kwargs):
-        if str(ctx.guild.id) not in self.settings or self.settings[str(ctx.message.guild.id)]["mode"] == 0:
+        if str(ctx.guild.id) not in self.settings or self.settings[str(ctx.guild.id)]["mode"] == 0:
             await ctx.send("This command requires complex mode to be enabled!"
                            " Use the `;inventory configure` command to switch"
                            " to complex mode, where items are restricted to admin defined")
@@ -82,10 +81,20 @@ class RPG(object):
     async def shutdown(self):
         dio.save_json("invdata/servers.json", self.settings)
 
-    def addserv(self, ctx, mode=1, items=None, ecc=False):
+    def addserv(self, guild, mode=1, items=None, ecc=False):
         if items is None:
             items = dict()
-        self.settings[str(ctx.message.guild.id)] = dict(mode=mode, items=items, eco=ecc, cur="dollars", lootboxes=dict())
+        self.settings[str(guild.id)] = dict(mode=mode, items=items, eco=ecc, cur="dollars", lootboxes=dict(), start=0)
+
+    async def get_settings(self, guild):
+        stgs = self.settings.get(str(guild.id), None)
+        if not stgs:
+            self.addserv(guild, mode=0)
+            stgs = self.settings.get(str(guild.id))
+        return stgs
+
+    async def update_settings(self, guild, settings):
+        self.settings[str(guild.id)] = settings
 
     async def get_full_inv(self, member):
         values = await self.conn.fetch(
@@ -102,9 +111,8 @@ class RPG(object):
         else:
             data = json.loads(values[0]["info"])
             try:
-                for item, value in data[str(member.guild.id)]["items"].items():
-                    if value is 0:
-                        del data[str(member.guild.id)]["items"]["item"]
+                itm = data[str(member.guild.id)]
+                itm["items"] = {x: y for x, y in itm["items"].items() if y}
 
             except KeyError:
                 print_exc()
@@ -146,8 +154,14 @@ class RPG(object):
 
     async def remove_inv(self, member, *items):
         data = await self.get_full_inv(member)
+        id = dict(items)
         data[str(member.guild.id)]["items"] = Counter(data[str(member.guild.id)]["items"])
-        data[str(member.guild.id)]["items"].subtract(dict(items))
+        data[str(member.guild.id)]["items"].subtract(id)
+
+        for item, value in data[str(member.guild.id)]["items"].items():
+            if item in id:
+                if value < 0:
+                    raise ValueError("User does not have enough items to take")
 
         command = """UPDATE userdata
            SET info = '{json_data}'
@@ -202,7 +216,8 @@ class RPG(object):
             val = ": ".join(split[1:])
             fdict[key] = val
 
-        self.settings[str(ctx.guild.id)]['items'][name] = fdict
+        settings = await self.get_settings(ctx.guild)
+        settings['items'][name] = fdict
         await ctx.send("Added item {}".format(name))
 
     @checks.mod_or_permissions()
@@ -211,8 +226,9 @@ class RPG(object):
     @checks.no_pm()
     async def removeitem(self, ctx, name: str):
         """Remove an item that can be given, inverse of ;i additem"""
-        if name in self.settings[str(ctx.guild.id)]['items']:
-            del self.settings[str(ctx.guild.id)]['items'][name]
+        settings = await self.get_settings(ctx.guild)
+        if name in settings['items']:
+            del settings['items'][name]
 
             await ctx.send("Item {} removed".format(name))
         else:
@@ -243,9 +259,8 @@ class RPG(object):
     async def giveitem(self, ctx, item: str, num: int, *members: discord.Member):
         """Give an item a number of times to members"""
         num = abs(num)
-        if str(ctx.guild.id) not in self.settings:
-            self.addserv(ctx, mode=False)
-        if self.settings[str(ctx.guild.id)]["mode"] == 0 or item in self.settings[str(ctx.guild.id)]["items"]:
+        settings = await self.get_settings(ctx.guild)
+        if settings["mode"] == 0 or item in settings["items"]:
             for member in members:
                 await self.add_inv(member, (item, num))
                 await ctx.send("Items given!")
@@ -260,10 +275,14 @@ class RPG(object):
         """Take a number of an item from a user
             Same command usage as inventory giveitem, inversely"""
         num = abs(num)
-        if self.settings[str(ctx.guild.id)]["mode"] == 0 or item in self.settings[str(ctx.guild.id)]["items"]:
+        settings = await self.get_settings(ctx.guild)
+        if settings["mode"] == 0 or item in settings["items"]:
             for member in members:
-                await self.remove_inv(member, (item, num))
-                await ctx.send("Items taken!")
+                try:
+                    await self.remove_inv(member, (item, num))
+                    await ctx.send("Items taken!")
+                except ValueError:
+                    await ctx.send("Could not take item from {}! Skipping".format(member))
         else:
             await ctx.send("Item is not available! (Add it or switch to simple mode)")
 
@@ -395,12 +414,25 @@ class RPG(object):
     @server_complex_mode
     async def items(self, ctx):
         """See all items for a guild"""
-        items = self.settings[str(ctx.guild.id)]['items']
+        settings = await self.get_settings(ctx.guild)
+        items = settings['items']
         if not items:
             await ctx.send("No items to display")
             return
-        fmt = "\n".join(items.keys())
-        embed = discord.Embed(description=fmt)
+
+        embed = discord.Embed()
+
+        words = dict()
+        for x in items.keys():
+            if x[0].lower() in words:
+                words[x[0].lower()].append(x)
+            else:
+                words[x[0].lower()] = [x]
+
+        for key, value in words.items():
+            if value:
+                embed.add_field(name=key.upper(), value="\n".join(value))
+
         embed.set_author(name=ctx.guild.name, icon_url=ctx.guild.icon_url)
         embed.set_thumbnail(
             url="https://mir-s3-cdn-cf.behance.net/project_modules/disp/196b9d18843737.562d0472d523f.png")
@@ -412,7 +444,7 @@ class RPG(object):
     @server_complex_mode
     async def iteminfo(self, ctx, item: str):
         """Get metadata for an item"""
-        servsetting = self.settings[str(ctx.message.guild.id)]
+        servsetting = await self.get_settings(ctx.guild)
         items = servsetting['items']
         if item not in items:
             await ctx.send("That is not a valid item!")
@@ -433,7 +465,7 @@ class RPG(object):
     async def sell(self, ctx, item: str, num: int):
         """If item has a set value, sell x of the item"""
         num = abs(num)
-        settings = self.settings[str(ctx.guild.id)]
+        settings = await self.get_settings(ctx.guild)
         if item in settings['items']:
             if settings['items'][item].get("value", None):
                 try:
@@ -455,7 +487,7 @@ class RPG(object):
         """If item has a set value, sell x of the item"""
         try:
             num = abs(num)
-            settings = self.settings[str(ctx.guild.id)]
+            settings = await self.get_settings(ctx.guild)
             if item in settings['items']:
                 if settings['items'][item].get("value", None):
                     try:
@@ -475,33 +507,46 @@ class RPG(object):
     @inventory.command(aliases=['bal', 'money'])
     @checks.no_pm()
     @server_eco_mode
-    async def balance(self, ctx):
+    async def balance(self, ctx, *, member: discord.Member=None):
         """Get your balance"""
-        val = await self.get_eco(ctx.author)
-        fmt = "You have {} {}".format(val, self.settings[str(ctx.message.guild.id)]['cur'])
+        if not member:
+            member = ctx.author
+        settings = await self.get_settings(ctx.guild)
+        val = await self.get_eco(member)
+        fmt = "You have {} {}".format(val, settings['cur'])
         embed = discord.Embed(description=fmt)
-        embed.set_author(name=ctx.author.display_name, icon_url=ctx.author.avatar_url)
+        embed.set_author(name=member.display_name, icon_url=member.avatar_url)
         embed.set_footer(text=str(ctx.message.created_at))
         embed.set_thumbnail(
             url="http://rs795.pbsrc.com/albums/yy232/PixKaruumi/Pixels/Pixels%2096/248.gif~c200")
         await ctx.send(embed=embed)
 
+    @checks.mod_or_permissions()
     @inventory.command()
     @checks.no_pm()
     @server_eco_mode
     async def setcurrency(self, ctx, currency: str):
         """Change the servers currency for example 'Gold', etc"""
-        old = self.settings[str(ctx.message.guild.id)]['cur']
-        self.settings[str(ctx.message.guild.id)]['cur'] = currency
+        settings = await self.get_settings(ctx.guild)
+        old = settings['cur']
+        settings['cur'] = currency
         await ctx.send("Currency changed from {} to {}".format(old, currency))
+
+    @checks.mod_or_permissions()
+    @inventory.command(aliases=["beginamount", "startermoney", "startmoney"])
+    @checks.no_pm()
+    @server_eco_mode
+    async def setstartamount(self, ctx, amount: int):
+        settings = await self.get_settings(ctx.guild)
+        settings["start"] = amount
+        await ctx.send("Players will now join the server with {} {}".format(amount, settings["cur"]))
 
     @checks.mod_or_permissions()
     @inventory.command(aliases=["conf", "config"])
     @checks.no_pm()
     async def configure(self, ctx):
         """Configure the server's inventory settings"""
-        if str(ctx.message.guild.id) not in self.settings:
-            self.addserv(ctx, mode=0)
+        settings = await self.get_settings(ctx.guild)
 
         desc = """To toggle complex inventory emote with :baggage_claim:
                To toggle eco mode emote with :dollar:
@@ -522,7 +567,7 @@ class RPG(object):
         for emote in emotes:
             await msg.add_reaction(emote)
 
-        tset = copy(self.settings[str(ctx.guild.id)])
+        tset = copy(settings)
 
         while True:
             try:
@@ -553,7 +598,7 @@ class RPG(object):
                                        name="Output",
                                        value="For eco to be enabled, the server must be in complex mode")
                 else:
-                    self.settings[str(ctx.guild.id)].update(tset)
+                    settings.update(tset)
                     embed.set_field_at(0, name="Output", value="Saved")
                 await msg.edit(embed=embed)
             elif r.emoji == emotes[3]:
@@ -574,8 +619,7 @@ class RPG(object):
     @checks.no_pm()
     async def _settings(self, ctx):
         """Get the servers settings"""
-        if str(ctx.guild.id) not in self.settings:
-            self.addserv(ctx, mode=0)
+        settings = await self.get_settings(ctx.guild)
 
         embed = discord.Embed()
         embed.set_author(name=ctx.guild.name, icon_url=ctx.guild.icon_url)
@@ -583,12 +627,12 @@ class RPG(object):
             url="https://mir-s3-cdn-cf.behance.net/project_modules/disp/196b9d18843737.562d0472d523f.png"
         )
         embed.add_field(name="Server Mode",
-                        value="Complex mode" if self.settings[str(ctx.guild.id)]["mode"] else "Simple mode")
+                        value="Complex mode" if settings["mode"] else "Simple mode")
 
         embed.add_field(name="Using Eco",
-                        value=str(self.settings[str(ctx.guild.id)]["eco"]))
+                        value=str(settings["eco"]))
 
-        items = self.settings[str(ctx.guild.id)]['items']
+        items = settings['items']
         if not items:
             fmt = "No items"
         else:
@@ -621,10 +665,9 @@ class RPG(object):
             embed.set_thumbnail(
                 url="https://mir-s3-cdn-cf.behance.net/project_modules/disp/196b9d18843737.562d0472d523f.png"
             )
-            if str(ctx.guild.id) in self.settings:
-                cur = self.settings[str(ctx.guild.id)]["cur"]
-            else:
-                cur = "dollars"
+            settings = await self.get_settings(ctx.guild)
+            cur = settings["cur"]
+
             for lotto, value in self.lotteries[ctx.guild.id].items():
                 embed.add_field(name=lotto,
                                 value="Jackpot: {} {}\n{} players entered".format(value["jackpot"],
@@ -677,24 +720,41 @@ class RPG(object):
 
 
     @commands.command(aliases=["rollthedice", "dice"])
-    async def rtd(self, ctx, dice: int, sides: int):
-        """Roll a number of dice with given sides"""
-        rolls = [randint(1, sides) for x in range(dice)]
-        msg = "Rolled **{}** ({})".format(sum(rolls), " + ".join(map(lambda x: str(x), rolls)))
-        await ctx.send(msg)
+    async def rtd(self, ctx, *dice: str):
+        """Roll a number of dice with given sides (ndx notation)
+        Example: ;rtd 3d7 2d4 5d8 +20"""
+        try:
+            rolls = dict()
+            add = []
+            for die in dice:
+                try:
+                    number, sides = die.split("d")
+                    number, sides = int(number), int(sides)
+                    rolls[sides] = [randint(1, sides) for x in range(number)]
+                except ValueError:
+                    add.append(int(die))
+
+            total = sum(sum(x) for x in rolls.values()) + sum(add)
+
+            all = "] + [".join(" + ".join(map(lambda x: str(x), roll)) for roll in rolls.values())
+            msg = "Rolled **{}** ([{}] + {})".format(total, all, " + ".join(map(lambda x: str(x), add)))
+            await ctx.send(msg)
+        except:
+            await ctx.send("Invalid syntax!")
 
     @checks.no_pm()
     @commands.group(invoke_without_command=True, aliases=['box'])
     @server_eco_mode
     async def lootbox(self, ctx):
-        if self.settings[str(ctx.guild.id)]["lootboxes"]:
+        settings = await self.get_settings(ctx.guild)
+        if settings["lootboxes"]:
             embed = discord.Embed()
             embed.set_author(name=ctx.guild.name, icon_url=ctx.guild.icon_url)
             embed.set_thumbnail(
                 url="https://mir-s3-cdn-cf.behance.net/project_modules/disp/196b9d18843737.562d0472d523f.png"
             )
-            fmt = "{}: {}%"
-            for box, data in self.settings[str(ctx.guild.id)]["lootboxes"].items():
+            fmt = "{}: {0:.2f}%"
+            for box, data in settings["lootboxes"].items():
                 total = sum(data["items"].values())
                 value = "Cost: {}\n\t".format(data["cost"]) + "\n\t".join(fmt.format(item, (value/total)*100) for item, value in data["items"].items())
                 embed.add_field(name=box,
@@ -717,7 +777,8 @@ class RPG(object):
         bananax2 orangex3. The outcome of the box will be
         Random Choice[banana, banana, orange, orange, orange]"""
 
-        if name in self.settings[str(ctx.guild.id)]["lootboxes"]:
+        settings = await self.get_settings(ctx.guild)
+        if name in settings["lootboxes"]:
             await ctx.send("Lootbox already exists, updating...")
 
         winitems = {}
@@ -727,7 +788,7 @@ class RPG(object):
             winitems.update({split: num})
 
 
-        self.settings[str(ctx.guild.id)]["lootboxes"][name] = dict(cost=cost, items=winitems)
+        settings["lootboxes"][name] = dict(cost=cost, items=winitems)
 
         await ctx.send("Lootbox successfully created")
 
@@ -735,8 +796,10 @@ class RPG(object):
     @lootbox.command(name="buy")
     @server_eco_mode
     async def _buy(self, ctx, name: str):
+        """Buy a lootbox of the given name"""
+        settings = await self.get_settings(ctx.guild)
         try:
-            box = self.settings[str(ctx.guild.id)]["lootboxes"][name]
+            box = settings["lootboxes"][name]
         except KeyError:
             await ctx.send("That is not a valid lootbox")
             return
@@ -759,8 +822,12 @@ class RPG(object):
     @lootbox.command(name="delete", aliases=["remove"])
     @server_eco_mode
     async def _delete(self, ctx, name: str):
-        if name in self.settings[str(ctx.guild.id)]["lootboxes"]:
-            del self.settings[str(ctx.guild.id)]["lootboxes"][name]
+        """Delete a lootbox with the given name"""
+        settings = await self.get_settings(ctx.guild)
+        if name in settings["lootboxes"]:
+            del settings["lootboxes"][name]
             await ctx.send("Loot box removed")
         else:
             await ctx.send("Invalid loot box")
+
+    # TODO: Redo dice roll. ;roll 2d3 4d4 + 20
