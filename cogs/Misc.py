@@ -325,7 +325,7 @@ Typheus, a little discord bot by Henry#6174
                 r, u = await self.bot.wait_for("reaction_add", check=lambda r, u: r.message.id == message.id, timeout=80)
             except asyncio.TimeoutError:
                 await message.delete()
-                await ctx.send("Menu timed out! ;help to go again")
+                await ctx.author.send("Menu timed out! ;help to go again")
                 return
 
             if u.id == self.bot.user.id:
