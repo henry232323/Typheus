@@ -59,9 +59,7 @@ class Misc(object):
         """Bot Info"""
         me = self.bot.user if not ctx.guild else ctx.guild.me
         appinfo = await self.bot.application_info()
-        embed = discord.Embed(
-                              color=me.top_role.color.value,
-                              )
+        embed = discord.Embed()
         embed.set_author(name=me.display_name, icon_url=appinfo.owner.avatar_url)
         embed.add_field(name="Author", value='Henry#6174 (Discord ID: 122739797646245899)')
         embed.add_field(name="Library", value='discord.py (Python)')
@@ -312,7 +310,7 @@ Typheus, a little discord bot by Henry#6174
         embed = discord.Embed(description=desc)
         embed.set_author(name=ctx.author.name, icon_url=ctx.author.avatar_url)
         embed.set_thumbnail(url=self.bot.user.avatar_url)
-        embed.set_footer(text="Made by Henry#6174 " + str(ctx.message.created_at), icon_url=(await self.bot.application_info()).owner.avatar_url)
+        embed.set_footer(text="Made by Henry#6174 using discord.py", icon_url=(await self.bot.application_info()).owner.avatar_url)
         message = await ctx.author.send(embed=embed)
 
         emotes = {cog.emote: name for name, cog in self.bot.cogs.items() if cog.emote}
@@ -344,17 +342,17 @@ Typheus, a little discord bot by Henry#6174
                 return
 
             embed.clear_fields()
-            fmt = "{}: {}"
+            fmt = "**{}**: {}"
             for command in self.bot.get_cog_commands(emotes[r.emoji]):
                 defhelp = command.help
                 if command.qualified_name == "help":
                     continue
                 if isinstance(command, commands.Group):
-                    value = "{}\n__Subcommands:__\n{}".format(defhelp,
+                    value = "{}\n__Subcommands:__\n\t{}".format(defhelp,
                             "\n\t".join(fmt.format(x.qualified_name[len(command.qualified_name) + 1:], x.help) for x in command.commands))
 
                     if len(value) >= 1024:
-                        value = "{}\n__Subcommands:__\n{}".format(defhelp,
+                        value = "{}\n__Subcommands:__\n\t{}".format(defhelp,
                                                                   "\n\t".join(x.qualified_name[len(command.qualified_name) + 1:] for x in
                                                                             command.commands))
                 else:

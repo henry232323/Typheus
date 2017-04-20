@@ -165,7 +165,11 @@ class Typheus(commands.Bot):
         await self.process_commands(message)
 
     async def on_command(self, ctx):
-        self.server_commands[ctx.guild.id] += 1
+        self.commands_used[ctx.command] += 1
+        if isinstance(ctx.channel, discord.TextChannel):
+            self.server_commands[ctx.guild.id] += 1
+        else:
+            self.server_commands[ctx.author.id] += 1
         if not (self.server_commands[ctx.guild.id] % 50):
             await ctx.send("If you like the utilities this bot provides, consider buying me a coffee https://ko-fi.com/henrys")
         if isinstance(ctx.message.channel, (discord.DMChannel, discord.GroupChannel)):  # Log command usage in discord logs

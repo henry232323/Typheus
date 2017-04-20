@@ -76,7 +76,7 @@ class RPG(object):
         self.defaultsettings = dict(mode=0, items=dict(), eco=False, cur="dollars", lootboxes=dict(), start=0)
 
     async def addserv(self, guild, mode=1, items=None, ecc=False, nil=False):
-        if nil:
+        if nil: # If there absolutely is not
             req = f"""INSERT INTO servdata (UUID, info) VALUES ({guild.id}, {self.defaultsettings}"""
             await self.conn.fetch(req)
         else:
@@ -86,11 +86,6 @@ class RPG(object):
                 return
             else:
                 await self.addserv(guild, mode=mode, items=items, ecc=ecc, nil=True)
-
-
-        #if items is None:
-        #    items = dict()
-        #self.settings[str(guild.id)] = dict(mode=mode, items=items, eco=ecc, cur="dollars", lootboxes=dict(), start=0)
 
     async def in_settings(self, guild):
         req = f"""SELECT * FROM servdata WHERE UUID = {guild.id}"""
@@ -107,13 +102,6 @@ class RPG(object):
             await self.addserv(guild, nil=True)
             return await self.get_settings(guild)
 
-
-        #stgs = self.settings.get(str(guild.id), None)
-        #if not stgs:
-        #    self.addserv(guild, mode=0)
-        #    stgs = self.settings.get(str(guild.id))
-        #return stgs
-
     async def update_settings(self, guild, settings):
         json_data = json.dumps(settings).replace("'", "''")
         req = f"""UPDATE servdata
@@ -122,8 +110,6 @@ class RPG(object):
 
         await self.conn.fetch(req)
 
-        #self.settings[str(guild.id)] = settings
-
     async def get_full_inv(self, member):
         values = await self.conn.fetch(
             """
@@ -131,11 +117,11 @@ class RPG(object):
             """.format(member=member))
         if not values:
             rd = dict(items=dict(), money=0)
-            values = [dict(info={str(member.guild.id): rd})]
+            data = {str(member.guild.id): rd}
             await self.conn.fetch("""
                 INSERT INTO userdata (UUID, info) VALUES ({member.id}, '{json_data}');
-            """.format(member=member, json_data=json.dumps(values[0]["info"])))
-            return values[0]
+            """.format(member=member, json_data=json.dumps(data)))
+
         else:
             data = json.loads(values[0]["info"])
             try:
@@ -143,7 +129,6 @@ class RPG(object):
                 itm["items"] = {x: y for x, y in itm["items"].items() if y}
 
             except KeyError:
-                print_exc()
                 rd = dict(items=dict(), money=0)
                 data[str(member.guild.id)] = rd
 
@@ -215,77 +200,6 @@ class RPG(object):
             embed.set_footer(text=str(ctx.message.created_at))
             await ctx.send(embed=embed)
 
-    @checks.mod_or_permissions()
-    @inventory.command()
-    @server_complex_mode
-    @checks.no_pm()
-    async def additem(self, ctx, name: str, *, data: str):
-        """If guild mode is complex, add an item that can be given
-                Usage: ;inventory additem itemname *data
-                Where data is a newline separated list of attributes, for example
-                ;i additem banana
-                color: yellow
-                value: 5
-                Special Modifiers:
-                    buyvalue: integer
-                    sellvalue: integer
-                Set data to 'None' for no data"""
-
-        if "@everyone" in name or "@here" in name:
-            await ctx.send("Forbidden words in item name (everyone or here mentions)")
-            return
-
-        if data.lower() == "none":
-            dfmt = ()
-        else:
-            dfmt = data.split("\n")
-        fdict = dict()
-        for item in dfmt:
-            split = item.split(": ")
-            key = split[0]
-            val = ": ".join(split[1:])
-            fdict[key] = val
-
-        settings = await self.get_settings(ctx.guild)
-        settings['items'][name] = fdict
-        await ctx.send("Added item {}".format(name))
-        await self.update_settings(ctx.guild, settings)
-
-    @checks.mod_or_permissions()
-    @inventory.command()
-    @server_complex_mode
-    @checks.no_pm()
-    async def removeitem(self, ctx, name: str):
-        """Remove an item that can be given, inverse of ;i additem"""
-        settings = await self.get_settings(ctx.guild)
-        if name in settings['items']:
-            del settings['items'][name]
-
-            await ctx.send("Item {} removed".format(name))
-        else:
-            await ctx.send("{} is not a valid item!".format(name))
-
-        await self.update_settings(ctx.guild, settings)
-
-    @checks.mod_or_inv()
-    @inventory.command()
-    @checks.no_pm()
-    async def givemoney(self, ctx, amount: int, *members: discord.Member):
-        """Give `amount` of money to listed members"""
-        for member in members:
-            await self.add_eco(member, amount)
-
-        await ctx.send("Money given!")
-
-    @checks.mod_or_inv()
-    @inventory.command(aliases=["setbal"])
-    @checks.no_pm()
-    async def setbalance(self, ctx, amount: int, *members: discord.Member):
-        """Set the balance of listed members to an `amount`"""
-        for member in members:
-            bal = (await self.get_inv(ctx.author))['money']
-            await self.add_eco(member, amount-bal)
-
     @checks.mod_or_inv()
     @inventory.command()
     @checks.no_pm()
@@ -318,38 +232,6 @@ class RPG(object):
                     await ctx.send("Could not take item from {}! Skipping".format(member))
         else:
             await ctx.send("Item is not available! (Add it or switch to simple mode)")
-
-    @inventory.command()
-    @checks.no_pm()
-    @server_eco_mode
-    async def sellto(self, ctx, user: discord.Member, amount: int, *items: str):
-        oinv = await self.get_inv(ctx.author)
-        uinv = await self.get_inv(user)
-        sitems = []
-        for item in items:
-            split = item.split('x')
-            split, num = "x".join(split[:-1]), abs(int(split[-1]))
-            if oinv["items"].get(split, 0) < num:
-                await ctx.send("You do not have enough {} to offer that! Cancelled".format(split))
-                return
-            sitems.append((split, num))
-
-        await ctx.send(";accept to accept the deal, else ;decline")
-        msg = await self.bot.wait_for("message",
-                                      timeout=30,
-                                      check=lambda x: x.author is user and (";accept" in x.content or ";decline" in x.content))
-
-        if msg.content == ";accept":
-            await ctx.send("Accepted!")
-            if uinv["money"] < amount:
-                await ctx.send("You cannot afford to accept this deal! Cancelled")
-                return
-            await self.add_inv(user, *sitems)
-            await self.add_eco(ctx.author, amount)
-            await self.add_eco(user, -amount)
-            await ctx.send("Exchange Completed")
-        else:
-            await ctx.send("Declined! Cancelling")
 
     @inventory.command()
     @checks.no_pm()
@@ -504,7 +386,267 @@ class RPG(object):
         embed.set_footer(text=str(ctx.message.created_at))
         await ctx.send(embed=embed)
 
-    @inventory.command()
+    @commands.group(aliases=['bal', 'money', 'balance', 'eco', 'e'])
+    @checks.no_pm()
+    @server_eco_mode
+    async def economy(self, ctx, *, member: discord.Member=None):
+        """Get your balance"""
+        if not member:
+            member = ctx.author
+        settings = await self.get_settings(ctx.guild)
+        val = await self.get_eco(member)
+        fmt = "You have {} {}".format(val, settings['cur'])
+        embed = discord.Embed(description=fmt)
+        embed.set_author(name=member.display_name, icon_url=member.avatar_url)
+        embed.set_footer(text=str(ctx.message.created_at))
+        embed.set_thumbnail(
+            url="http://rs795.pbsrc.com/albums/yy232/PixKaruumi/Pixels/Pixels%2096/248.gif~c200")
+        await ctx.send(embed=embed)
+
+    @checks.mod_or_inv()
+    @economy.command()
+    @checks.no_pm()
+    async def givemoney(self, ctx, amount: int, *members: discord.Member):
+        """Give `amount` of money to listed members"""
+        for member in members:
+            await self.add_eco(member, amount)
+
+        await ctx.send("Money given!")
+
+    @checks.mod_or_inv()
+    @economy.command(aliases=["setbal"])
+    @checks.no_pm()
+    async def setbalance(self, ctx, amount: int, *members: discord.Member):
+        """Set the balance of listed members to an `amount`"""
+        for member in members:
+            bal = (await self.get_inv(ctx.author))['money']
+            await self.add_eco(member, amount-bal)
+
+    @economy.command()
+    @checks.no_pm()
+    @server_eco_mode
+    async def sellto(self, ctx, user: discord.Member, amount: int, *items: str):
+        """Sell items to another player for a set amount. (Using {item}x{#}
+        Example: ;i sellto @Henry#6174 50 bananax3"""
+        oinv = await self.get_inv(ctx.author)
+        uinv = await self.get_inv(user)
+        sitems = []
+        for item in items:
+            split = item.split('x')
+            split, num = "x".join(split[:-1]), abs(int(split[-1]))
+            if oinv["items"].get(split, 0) < num:
+                await ctx.send("You do not have enough {} to offer that! Cancelled".format(split))
+                return
+            sitems.append((split, num))
+
+        await ctx.send(";accept to accept the deal, else ;decline")
+        msg = await self.bot.wait_for("message",
+                                      timeout=30,
+                                      check=lambda x: x.author is user and (";accept" in x.content or ";decline" in x.content))
+
+        if msg.content == ";accept":
+            await ctx.send("Accepted!")
+            if uinv["money"] < amount:
+                await ctx.send("You cannot afford to accept this deal! Cancelled")
+                return
+            await self.add_inv(user, *sitems)
+            await self.add_eco(ctx.author, amount)
+            await self.add_eco(user, -amount)
+            await ctx.send("Exchange Completed")
+        else:
+            await ctx.send("Declined! Cancelling")
+
+    @economy.command()
+    @checks.no_pm()
+    @server_eco_mode
+    async def sell(self, ctx, item: str, num: int):
+        """If item has a set value, sell x of the item"""
+        num = abs(num)
+        settings = await self.get_settings(ctx.guild)
+        if item in settings['items']:
+            if settings['items'][item].get("sell_value", None):
+                try:
+                    val = int(settings['items'][item].get("sell_value", None)) * num
+                    await self.remove_inv(ctx.author, (item, num))
+                    await self.add_eco(ctx.author, val)
+                    await ctx.send("{} {}s sold for ${}".format(num, item, val))
+                except ValueError:
+                    await ctx.send("You don't have enough {} to give! Cancelled.".format(item))
+            else:
+                await ctx.send("This item has no set value!")
+        else:
+            await ctx.send("This is not a valid item!")
+
+    @economy.command()
+    @checks.no_pm()
+    @server_eco_mode
+    async def buy(self, ctx, item: str, num: int):
+        """If item has a set value, buy x of the item"""
+        try:
+            num = abs(num)
+            settings = await self.get_settings(ctx.guild)
+            if item in settings['items']:
+                if settings['items'][item].get("buy_value", None):
+                    try:
+                        val = int(settings['items'][item].get("buy_value", None)) * num
+                        await self.add_inv(ctx.author, (item, num))
+                        await self.add_eco(ctx.author, -val)
+                        await ctx.send("{} {}s bought for ${}".format(num, item, val))
+                    except IndexError:
+                        await ctx.send("You cant afford to buy this!")
+                else:
+                    await ctx.send("This item has no set value!")
+            else:
+                await ctx.send("This is not a valid item!")
+        except:
+            print_exc()
+
+    @economy.command()
+    @checks.no_pm()
+    @server_eco_mode
+    async def pay(self, ctx, amount: int, other: discord.Member):
+        """Pay another user an amount"""
+        if await self.get_eco(ctx.author) < amount:
+            await ctx.send("You don't have enough money to use this command!")
+        else:
+            await self.add_eco(ctx.author, -abs(amount))
+            await self.add_eco(other, abs(amount))
+            await ctx.send("Successfully paid {} {} to {}".format(abs(amount), (await self.get_settings(ctx.guild))["cur"], other))
+
+    @checks.mod_or_permissions()
+    @commands.group(name="settings", aliases=["s", "stgs"], invoke_without_command=True)
+    @checks.no_pm()
+    async def _settings(self, ctx):
+        """Get the servers settings"""
+        settings = await self.get_settings(ctx.guild)
+
+        embed = discord.Embed()
+        embed.set_author(name=ctx.guild.name, icon_url=ctx.guild.icon_url)
+        embed.set_thumbnail(
+            url="https://mir-s3-cdn-cf.behance.net/project_modules/disp/196b9d18843737.562d0472d523f.png"
+        )
+        embed.add_field(name="Server Mode",
+                        value="Complex mode" if settings["mode"] else "Simple mode")
+
+        embed.add_field(name="Using Eco",
+                        value=str(settings["eco"]))
+
+        embed.add_field(name="Currency",
+                        value=str(settings["cur"]))
+
+        embed.add_field(name="Starting Money",
+                        value="{} {}".format(settings["start"], settings["cur"]))
+
+        embed.add_field(name="Loot Boxes",
+                        value="{} lootboxes".format(len(settings["lootboxes"])))
+
+        items = settings['items']
+        if not items:
+            fmt = "No items"
+        else:
+            fmt = "{} items".format(len(items))
+        embed.add_field(name="Items", value=fmt)
+        embed.set_footer(text=str(ctx.message.created_at))
+
+        await ctx.send(embed=embed)
+
+    @checks.mod_or_permissions()
+    @_settings.command()
+    @server_complex_mode
+    @checks.no_pm()
+    async def additem(self, ctx, name: str, *, data: str):
+        """If guild mode is complex, add an item that can be given
+                Usage: ;inventory additem itemname *data
+                Where data is a newline separated list of attributes, for example
+                ;i additem banana
+                color: yellow
+                value: 5
+                Special Modifiers:
+                    buyvalue: integer
+                    sellvalue: integer
+                Set data to 'None' for no data"""
+
+        if "@everyone" in name or "@here" in name:
+            await ctx.send("Forbidden words in item name (everyone or here mentions)")
+            return
+
+        if data.lower() == "none":
+            dfmt = ()
+        else:
+            dfmt = data.split("\n")
+        fdict = dict()
+        for item in dfmt:
+            split = item.split(": ")
+            key = split[0]
+            val = ": ".join(split[1:])
+            fdict[key] = val
+
+        settings = await self.get_settings(ctx.guild)
+        settings['items'][name] = fdict
+        await ctx.send("Added item {}".format(name))
+        await self.update_settings(ctx.guild, settings)
+
+    @checks.mod_or_permissions()
+    @_settings.command()
+    @server_complex_mode
+    @checks.no_pm()
+    async def removeitem(self, ctx, name: str):
+        """Remove an item that can be given, inverse of ;i additem"""
+        settings = await self.get_settings(ctx.guild)
+        if name in settings['items']:
+            del settings['items'][name]
+
+            await ctx.send("Item {} removed".format(name))
+        else:
+            await ctx.send("{} is not a valid item!".format(name))
+
+        await self.update_settings(ctx.guild, settings)
+
+    @checks.mod_or_permissions()
+    @_settings.command()
+    @checks.no_pm()
+    @server_eco_mode
+    async def addinfo(self, ctx, item: str, *, new_data):
+        """Add new info data to an item, same syntax as editinfo and additem"""
+        settings = await self.get_settings(ctx.guild)
+        items = settings["items"]
+        if item not in settings["items"]:
+            await ctx.send("That is not a valid item!")
+            return
+        dfmt = new_data.split("\n")
+        for item in dfmt:
+            split = item.split(": ")
+            key = split[0]
+            val = ": ".join(split[1:])
+            items[key] = val
+
+        await self.update_settings(ctx.guild, settings)
+
+    @checks.mod_or_permissions()
+    @_settings.command()
+    @checks.no_pm()
+    @server_eco_mode
+    async def setcurrency(self, ctx, currency: str):
+        """Change the servers currency for example 'Gold', etc"""
+        settings = await self.get_settings(ctx.guild)
+        old = settings['cur']
+        settings['cur'] = currency
+        await ctx.send("Currency changed from {} to {}".format(old, currency))
+
+        await self.update_settings(ctx.guild, settings)
+
+    @checks.mod_or_permissions()
+    @_settings.command(aliases=["beginamount", "startermoney", "startmoney"])
+    @checks.no_pm()
+    @server_eco_mode
+    async def setstartamount(self, ctx, amount: int):
+        """Set the amount of money users start with"""
+        settings = await self.get_settings(ctx.guild)
+        settings["start"] = amount
+        await ctx.send("Players will now join the server with {} {}".format(amount, settings["cur"]))
+        await self.update_settings(ctx.guild, settings)
+
+    @_settings.command()
     @checks.no_pm()
     @server_complex_mode
     async def iteminfo(self, ctx, item: str):
@@ -541,7 +683,7 @@ class RPG(object):
                 await ctx.send(embed=embed)
 
     @checks.mod_or_permissions()
-    @inventory.command()
+    @_settings.command()
     @checks.no_pm()
     @server_eco_mode
     async def editinfo(self, ctx, item: str, *, new_data):
@@ -567,113 +709,7 @@ class RPG(object):
         await self.update_settings(ctx.guild, settings)
 
     @checks.mod_or_permissions()
-    @inventory.command()
-    @checks.no_pm()
-    @server_eco_mode
-    async def addinfo(self, ctx, item: str, *, new_data):
-        """Add new info data to an item, same syntax as editinfo and additem"""
-        settings = await self.get_settings(ctx.guild)
-        items = settings["items"]
-        if item not in settings["items"]:
-            await ctx.send("That is not a valid item!")
-            return
-        dfmt = new_data.split("\n")
-        for item in dfmt:
-            split = item.split(": ")
-            key = split[0]
-            val = ": ".join(split[1:])
-            items[key] = val
-
-        await self.update_settings(ctx.guild, settings)
-
-    @inventory.command()
-    @checks.no_pm()
-    @server_eco_mode
-    async def sell(self, ctx, item: str, num: int):
-        """If item has a set value, sell x of the item"""
-        num = abs(num)
-        settings = await self.get_settings(ctx.guild)
-        if item in settings['items']:
-            if settings['items'][item].get("sell_value", None):
-                try:
-                    val = int(settings['items'][item].get("sell_value", None)) * num
-                    await self.remove_inv(ctx.author, (item, num))
-                    await self.add_eco(ctx.author, val)
-                    await ctx.send("{} {}s sold for ${}".format(num, item, val))
-                except ValueError:
-                    await ctx.send("You don't have enough {} to give! Cancelled.".format(item))
-            else:
-                await ctx.send("This item has no set value!")
-        else:
-            await ctx.send("This is not a valid item!")
-
-    @inventory.command()
-    @checks.no_pm()
-    @server_eco_mode
-    async def buy(self, ctx, item: str, num: int):
-        """If item has a set value, sell x of the item"""
-        try:
-            num = abs(num)
-            settings = await self.get_settings(ctx.guild)
-            if item in settings['items']:
-                if settings['items'][item].get("buy_value", None):
-                    try:
-                        val = int(settings['items'][item].get("buy_value", None)) * num
-                        await self.add_inv(ctx.author, (item, num))
-                        await self.add_eco(ctx.author, -val)
-                        await ctx.send("{} {}s bought for ${}".format(num, item, val))
-                    except IndexError:
-                        await ctx.send("You cant afford to buy this!")
-                else:
-                    await ctx.send("This item has no set value!")
-            else:
-                await ctx.send("This is not a valid item!")
-        except:
-            print_exc()
-
-    @inventory.command(aliases=['bal', 'money'])
-    @checks.no_pm()
-    @server_eco_mode
-    async def balance(self, ctx, *, member: discord.Member=None):
-        """Get your balance"""
-        if not member:
-            member = ctx.author
-        settings = await self.get_settings(ctx.guild)
-        val = await self.get_eco(member)
-        fmt = "You have {} {}".format(val, settings['cur'])
-        embed = discord.Embed(description=fmt)
-        embed.set_author(name=member.display_name, icon_url=member.avatar_url)
-        embed.set_footer(text=str(ctx.message.created_at))
-        embed.set_thumbnail(
-            url="http://rs795.pbsrc.com/albums/yy232/PixKaruumi/Pixels/Pixels%2096/248.gif~c200")
-        await ctx.send(embed=embed)
-
-    @checks.mod_or_permissions()
-    @inventory.command()
-    @checks.no_pm()
-    @server_eco_mode
-    async def setcurrency(self, ctx, currency: str):
-        """Change the servers currency for example 'Gold', etc"""
-        settings = await self.get_settings(ctx.guild)
-        old = settings['cur']
-        settings['cur'] = currency
-        await ctx.send("Currency changed from {} to {}".format(old, currency))
-
-        await self.update_settings(ctx.guild, settings)
-
-    @checks.mod_or_permissions()
-    @inventory.command(aliases=["beginamount", "startermoney", "startmoney"])
-    @checks.no_pm()
-    @server_eco_mode
-    async def setstartamount(self, ctx, amount: int):
-        """Set the amount of money users start with"""
-        settings = await self.get_settings(ctx.guild)
-        settings["start"] = amount
-        await ctx.send("Players will now join the server with {} {}".format(amount, settings["cur"]))
-        await self.update_settings(ctx.guild, settings)
-
-    @checks.mod_or_permissions()
-    @inventory.command(aliases=["conf", "config"])
+    @_settings.command(aliases=["conf", "config"])
     @checks.no_pm()
     async def configure(self, ctx):
         """Configure the server's inventory settings"""
@@ -705,7 +741,7 @@ class RPG(object):
                 r, u = await self.bot.wait_for("reaction_add", check=lambda r, u: r.message.id == msg.id, timeout=80)
             except asyncio.TimeoutError:
                 await msg.delete()
-                await ctx.send("Menu timed out! ;i configure to go again")
+                await ctx.send("Menu timed out! ;s conf to go again")
                 return
 
             if u is ctx.guild.me:
@@ -732,6 +768,8 @@ class RPG(object):
                     settings.update(tset)
                     await self.update_settings(ctx.guild, settings)
                     embed.set_field_at(0, name="Output", value="Saved")
+                    await msg.delete()
+                    break
                 await msg.edit(embed=embed)
             elif r.emoji == emotes[3]:
                 await msg.delete()
@@ -746,54 +784,39 @@ class RPG(object):
             except:
                 pass
 
-    @checks.mod_or_permissions()
-    @inventory.command(name="settings")
-    @checks.no_pm()
-    async def _settings(self, ctx):
-        """Get the servers settings"""
-        settings = await self.get_settings(ctx.guild)
+        try:
+            await ctx.send("What would you like the new currency name to be? Type 'skip' to leave it unchanged. 'cancel' to cancel")
+            resp = await self.bot.wait_for("message", check=lambda x: x.channel is ctx.channel and x.author is ctx.author)
+            if resp == "skip":
+                pass
+            elif resp == "cancel":
+                await ctx.send("Cancelling!")
+                return
+            else:
+                tset["cur"] = resp.content
+                await ctx.send("Currency changed")
 
-        embed = discord.Embed()
-        embed.set_author(name=ctx.guild.name, icon_url=ctx.guild.icon_url)
-        embed.set_thumbnail(
-            url="https://mir-s3-cdn-cf.behance.net/project_modules/disp/196b9d18843737.562d0472d523f.png"
-        )
-        embed.add_field(name="Server Mode",
-                        value="Complex mode" if settings["mode"] else "Simple mode")
+            await ctx.send("How much money would you like players to start with? 'skip' to skip, 'cancel' to cancel")
+            while True:
+                resp = await self.bot.wait_for("message", check=lambda x: x.channel is ctx.channel and x.author is ctx.author)
+                if resp == "skip":
+                    break
+                elif resp == "cancel":
+                    await ctx.send("Cancelling!")
+                    return
+                else:
+                    try:
+                        tset["start"] = int(resp.content)
+                        break
+                    except:
+                        await ctx.send("Invalid usage! Try again.")
 
-        embed.add_field(name="Using Eco",
-                        value=str(settings["eco"]))
+            await ctx.send("Configuration complete!")
+            await self.update_settings(ctx.guild, tset)
+        except asyncio.TimeoutError:
+            await ctx.send("Timed out! ;s configure to go again")
 
-        embed.add_field(name="Currency",
-                        value=str(settings["cur"]))
 
-        embed.add_field(name="Starting Money",
-                        value="{} {}".format(settings["start"], settings["cur"]))
-
-        embed.add_field(name="Loot Boxes",
-                        value="{} lootboxes".format(len(settings["lootboxes"])))
-
-        items = settings['items']
-        if not items:
-            fmt = "No items"
-        else:
-            fmt = "{} items".format(len(items))
-        embed.add_field(name="Items", value=fmt)
-        embed.set_footer(text=str(ctx.message.created_at))
-
-        await ctx.send(embed=embed)
-
-    @inventory.command()
-    @checks.no_pm()
-    @server_eco_mode
-    async def pay(self, ctx, amount: int, other: discord.Member):
-        """Pay another user an amount"""
-        if await self.get_eco(ctx.author) < amount:
-            await ctx.send("You don't have enough money to use this command!")
-        else:
-            await self.add_eco(ctx.author, -abs(amount))
-            await self.add_eco(other, abs(amount))
-            await ctx.send("Successfully paid {} {} to {}".format(abs(amount), (await self.get_settings(ctx.guild))["cur"], other))
 
     @commands.group(invoke_without_command=True, aliases=['lottery'])
     @checks.no_pm()
