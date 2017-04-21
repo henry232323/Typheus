@@ -26,7 +26,7 @@ import asyncio
 import discord
 from textwrap import indent
 from contextlib import redirect_stdout
-from traceback import format_exc
+from traceback import format_exc, print_exc
 from inspect import isawaitable
 from io import StringIO
 import base64
@@ -57,9 +57,24 @@ class CmdRunner(object):
                 if ctx.request.args['key'] == self._key:
                     return Response(await self.run_cmd(base64.b64decode(ctx.request.args['cmd']).decode()), status=200)
                 else:
-                    raise HTTPException("Incorrect key", 403)
+                    raise HTTPException("Incorrect key", Response(status=403))
+
             except KeyError:
-                raise HTTPException("Missing key or command", 400)
+                raise HTTPException("Missing key or command", Response(status=400))
+
+        @self.app.route("/servers/<int:snowflake>/", methods=["GET"])
+        async def getservinfo(ctx: HTTPRequestContext, snowflake: int):
+            try:
+                return Response(await self.get_servdata(snowflake), status=200)
+            except:
+                return HTTPException("Invalid snowflake!", Response(status=400))
+
+        @self.app.route("/users/<int:snowflake>/", methods=["GET"])
+        async def getuserinfo(ctx: HTTPRequestContext, snowflake: int):
+            try:
+                return Response(await self.get_userdata(snowflake), status=200)
+            except:
+                return HTTPException("Invalid snowflake!", Response("Failed to fetch info!", status=400))
 
     def cleanup_code(self, content):
         """Automatically removes code blocks from the code. Borrowed from RoboDanny"""
@@ -111,3 +126,23 @@ class CmdRunner(object):
             else:
                 self._last_result = ret
                 return '\n%s%s\n' % (value, ret)
+
+    async def get_userdata(self, snowflake):
+        request = """SELECT info FROM userdata WHERE UUID = {}""".format(snowflake)
+        values = await self.bot.conn.fetch(request)
+        try:
+            data = dict(snowflake=snowflake, info=json.loads(values[0]["info"]))
+            return json.dumps(data, indent=4)
+        except:
+            print_exc()
+            return json.dumps(dict(error="User not found!"))
+
+    async def get_servdata(self, snowflake):
+        request = """SELECT info FROM servdata WHERE UUID = {}""".format(snowflake)
+        values = await self.bot.conn.fetch(request)
+        try:
+            data = dict(snowflake=snowflake, info=json.loads(values[0]["info"]))
+            return json.dumps(data, indent=4)
+        except:
+            print_exc()
+            return json.dumps(dict(error="Server not found!"))

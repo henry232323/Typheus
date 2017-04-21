@@ -37,7 +37,7 @@ def server_complex_mode(func):
         instgs = await self.in_settings(ctx.guild)
         if not instgs or settings["mode"] == 0:
             await ctx.send("This command requires complex mode to be enabled!"
-                           " Use the `;inventory configure` command to switch"
+                           " Use the `;settings configure` command to switch"
                            " to complex mode, where items are restricted to admin defined")
         else:
             await func(self, ctx, *args, **kwargs)
@@ -55,12 +55,18 @@ def server_eco_mode(func):
            settings["eco"] == False:
 
             await ctx.send("To use this command the guild must be in complex mode and have economy enabled!"
-                           " Use `inventory configure` to change servmode to complex and change eco mode")
+                           " Use `settings configure` to change servmode to complex and change eco mode")
         else:
             await func(self, ctx, *args, **kwargs)
 
     return predicate
 
+
+class Converter(commands.MemberConverter):
+    def convert(self):
+        if self.argument == 'everyone' or self.argument == '@everyone':
+            return 'everyone'
+        return super().convert()
 
 class RPG(object):
     """Inventory/Economy related commands. Some commands require certain roles. 
@@ -74,13 +80,14 @@ class RPG(object):
         self.conn = self.bot.conn
         self.lotteries = dict()
         self.defaultsettings = dict(mode=0, items=dict(), eco=False, cur="dollars", lootboxes=dict(), start=0)
+        self.defaultdump = json.dumps(self.defaultsettings).replace("'", "''")
 
     async def addserv(self, guild, mode=1, items=None, ecc=False, nil=False):
         if nil: # If there absolutely is not
-            req = f"""INSERT INTO servdata (UUID, info) VALUES ({guild.id}, {self.defaultsettings}"""
+            req = """INSERT INTO servdata (UUID, info) VALUES ({0.id}, '{1}')""".format(guild, self.defaultdump)
             await self.conn.fetch(req)
         else:
-            req = f"""SELECT UUID, info FROM servdata WHERE UUID = {guild.id}"""
+            req = f"""SELECT info FROM servdata WHERE UUID = {guild.id}"""
             values = await self.conn.fetch(req)
             if values:
                 return
@@ -92,29 +99,36 @@ class RPG(object):
         return bool(await self.conn.fetch(req))
 
     async def get_settings(self, guild):
-        req = f"""SELECT info FROM servdata WHERE UUID = {guild.id}"""
-        values = await self.conn.fetch(req)
-        if values:
-            data = json.loads(values[0]["info"])
-            return data
+        try:
+            req = f"""SELECT info FROM servdata WHERE UUID = {guild.id}"""
+            values = await self.conn.fetch(req)
+            if values:
+                data = json.loads(values[0]["info"])
+                return data
 
-        else:
-            await self.addserv(guild, nil=True)
-            return await self.get_settings(guild)
+            else:
+                await self.addserv(guild, nil=True)
+                return await self.get_settings(guild)
+        except:
+            print_exc()
 
     async def update_settings(self, guild, settings):
-        json_data = json.dumps(settings).replace("'", "''")
-        req = f"""UPDATE servdata
-                  SET info = '{json_data}'
-                  WHERE UUID = {guild.id}"""
+        try:
+            json_data = json.dumps(settings).replace("'", "''")
+            req = f"""UPDATE servdata
+                      SET info = '{json_data}'
+                      WHERE UUID = {guild.id}"""
 
-        await self.conn.fetch(req)
+            await self.conn.fetch(req)
+        except:
+            print(json_data)
 
     async def get_full_inv(self, member):
         values = await self.conn.fetch(
             """
             SELECT info FROM userdata WHERE UUID = {member.id};
             """.format(member=member))
+
         if not values:
             rd = dict(items=dict(), money=0)
             data = {str(member.guild.id): rd}
@@ -161,7 +175,7 @@ class RPG(object):
             raise ValueError("Cannot take more than user has")
         command = """UPDATE userdata
            SET info = '{json_data}'
-           WHERE UUID = {member.id};""".format(json_data=json.dumps(data), member=member)
+           WHERE UUID = {member.id};""".format(json_data=json.dumps(data).replace("'", "''"), member=member)
 
         await self.conn.fetch(command)
 
@@ -203,14 +217,16 @@ class RPG(object):
     @checks.mod_or_inv()
     @inventory.command()
     @checks.no_pm()
-    async def giveitem(self, ctx, item: str, num: int, *members: discord.Member):
+    async def giveitem(self, ctx, item: str, num: int, *members: Converter):
         """Give an item a number of times to members"""
+        if "everyone" in members:
+            members = ctx.guild.members
         num = abs(num)
         settings = await self.get_settings(ctx.guild)
         if settings["mode"] == 0 or item in settings["items"]:
             for member in members:
                 await self.add_inv(member, (item, num))
-                await ctx.send("Items given!")
+            await ctx.send("Items given!")
 
         else:
             await ctx.send("Item is not available! (Add it or switch to simple mode)")
@@ -218,9 +234,11 @@ class RPG(object):
     @checks.mod_or_inv()
     @inventory.command()
     @checks.no_pm()
-    async def takeitem(self, ctx, item: str, num: int, *members: discord.Member):
+    async def takeitem(self, ctx, item: str, num: int, *members: Converter):
         """Take a number of an item from a user
             Same command usage as inventory giveitem, inversely"""
+        if "everyone" in members:
+            members = ctx.guild.members
         num = abs(num)
         settings = await self.get_settings(ctx.guild)
         if settings["mode"] == 0 or item in settings["items"]:
@@ -386,7 +404,7 @@ class RPG(object):
         embed.set_footer(text=str(ctx.message.created_at))
         await ctx.send(embed=embed)
 
-    @commands.group(aliases=['bal', 'money', 'balance', 'eco', 'e'])
+    @commands.group(invoke_without_command=True, aliases=['bal', 'money', 'balance', 'eco', 'e'])
     @checks.no_pm()
     @server_eco_mode
     async def economy(self, ctx, *, member: discord.Member=None):
@@ -406,8 +424,11 @@ class RPG(object):
     @checks.mod_or_inv()
     @economy.command()
     @checks.no_pm()
-    async def givemoney(self, ctx, amount: int, *members: discord.Member):
+    async def givemoney(self, ctx, amount: int, *members: Converter):
         """Give `amount` of money to listed members"""
+        if "everyone" in members:
+            members = ctx.guild.members
+
         for member in members:
             await self.add_eco(member, amount)
 
@@ -416,11 +437,16 @@ class RPG(object):
     @checks.mod_or_inv()
     @economy.command(aliases=["setbal"])
     @checks.no_pm()
-    async def setbalance(self, ctx, amount: int, *members: discord.Member):
+    async def setbalance(self, ctx, amount: int, *members: Converter):
         """Set the balance of listed members to an `amount`"""
+        if "everyone" in members:
+            members = ctx.guild.members
+
         for member in members:
-            bal = (await self.get_inv(ctx.author))['money']
+            bal = await self.get_eco(member)
             await self.add_eco(member, amount-bal)
+
+        await ctx.send("Balance changed!")
 
     @economy.command()
     @checks.no_pm()
@@ -787,9 +813,9 @@ class RPG(object):
         try:
             await ctx.send("What would you like the new currency name to be? Type 'skip' to leave it unchanged. 'cancel' to cancel")
             resp = await self.bot.wait_for("message", check=lambda x: x.channel is ctx.channel and x.author is ctx.author)
-            if resp == "skip":
+            if resp.content == "skip":
                 pass
-            elif resp == "cancel":
+            elif resp.content == "cancel":
                 await ctx.send("Cancelling!")
                 return
             else:
@@ -799,9 +825,9 @@ class RPG(object):
             await ctx.send("How much money would you like players to start with? 'skip' to skip, 'cancel' to cancel")
             while True:
                 resp = await self.bot.wait_for("message", check=lambda x: x.channel is ctx.channel and x.author is ctx.author)
-                if resp == "skip":
+                if resp.content == "skip":
                     break
-                elif resp == "cancel":
+                elif resp.content == "cancel":
                     await ctx.send("Cancelling!")
                     return
                 else:

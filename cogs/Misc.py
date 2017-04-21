@@ -69,13 +69,12 @@ class Misc(object):
 
         total_members = sum(len(s.members) for s in self.bot.guilds)
         total_online = sum(1 for m in self.bot.get_all_members() if m.status != discord.Status.offline)
-        unique_members = set(self.bot.get_all_members())
-        unique_online = sum(1 for m in unique_members if m.status != discord.Status.offline)
+        unique_members = set(map(lambda x: x.id, self.bot.get_all_members()))
         channel_types = Counter(isinstance(c, discord.TextChannel) for c in self.bot.get_all_channels())
         voice = channel_types[False]
         text = channel_types[True]
         embed.add_field(name="Total Members", value='{} ({} online)'.format(total_members, total_online))
-        embed.add_field(name="Unique Members", value='{} ({} online)'.format(len(unique_members), unique_online))
+        embed.add_field(name="Unique Members", value='{}'.format(len(unique_members)))
         embed.add_field(name="Channels", value='{} text channels, {} voice channels'.format(text, voice))
 
         embed.add_field(name="CPU Percentage", value="{}%".format(psutil.Process(os.getpid()).cpu_percent()))
@@ -281,6 +280,18 @@ class Misc(object):
             fmt = "**{}**: _{}_"
             parts = list(command)
             main = parts.pop(0)
+            if not parts and main in self.bot.cogs:
+                cog = self.bot.get_cog(main)
+                command = self.bot.get_cog_commands(main)
+                dfmt = indent("\n".join(
+                    fmt.format(x.qualified_name, x.help) for x in command),
+                              prefix="\t")
+                value = "**{0}**\n{1}\n__Subcommands:__\n{2}".format(main.upper(), cog.__doc__, dfmt
+                                                                             )
+
+                await ctx.send(value)
+                return
+
             command = discord.utils.get(self.bot.commands, name=main)
             if not command:
                 await ctx.send("Invalid command!")

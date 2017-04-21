@@ -166,12 +166,17 @@ class Typheus(commands.Bot):
 
     async def on_command(self, ctx):
         self.commands_used[ctx.command] += 1
-        if isinstance(ctx.channel, discord.TextChannel):
+        if isinstance(ctx.author, discord.Member):
             self.server_commands[ctx.guild.id] += 1
+            if not (self.server_commands[ctx.guild.id] % 50):
+                await ctx.send(
+                    "If you like the utilities this bot provides, consider buying me a coffee https://ko-fi.com/henrys")
         else:
             self.server_commands[ctx.author.id] += 1
-        if not (self.server_commands[ctx.guild.id] % 50):
-            await ctx.send("If you like the utilities this bot provides, consider buying me a coffee https://ko-fi.com/henrys")
+            if not (self.server_commands[ctx.author.id] % 50):
+                await ctx.send(
+                    "If you like the utilities this bot provides, consider buying me a coffee https://ko-fi.com/henrys")
+
         if isinstance(ctx.message.channel, (discord.DMChannel, discord.GroupChannel)):  # Log command usage in discord logs
             destination = 'Private Message'
         else:
@@ -206,10 +211,9 @@ class Typheus(commands.Bot):
 
     async def on_member_join(self, member):
         RPG = self.cogs["RPG"]
-        if str(member.guild.id) in RPG.settings:
-            amount = RPG.settings[str(member.guild.id)]["start"]
-            if amount:
-                await RPG.add_eco(member, amount)
+        amount = (await RPG.get_settings(member.guild))["start"]
+        if amount:
+            await RPG.add_eco(member, amount)
 
     async def markov_mention(self, message):
         response = self._markov_model.make_sentence(tries=100)
