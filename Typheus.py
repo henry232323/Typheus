@@ -210,10 +210,13 @@ class Typheus(commands.Bot):
         self.socket_stats[msg.get('t')] += 1
 
     async def on_member_join(self, member):
-        RPG = self.cogs["RPG"]
-        amount = (await RPG.get_settings(member.guild))["start"]
-        if amount:
-            await RPG.add_eco(member, amount)
+        try:
+            RPG = self.cogs["RPG"]
+            amount = (await RPG.get_settings(member.guild))["start"]
+            if amount:
+                await RPG.add_eco(member, amount)
+        except TypeError:
+            return
 
     async def markov_mention(self, message):
         response = self._markov_model.make_sentence(tries=100)
@@ -254,7 +257,7 @@ def main():
 
     loop = asyncio.get_event_loop()
     prefix = ';' if 'debug' not in sys.argv else '$'
-    invlink = "https://discordapp.com/oauth2/authorize?client_id=284456340879966231&scope=bot&permissions=305196074"
+    invlink = "https://discordapp.com/oauth2/authorize?client_id=284456340879966231&scope=bot&permissions=322641"
     servinv = "https://discord.gg/UYJb8fQ"
     description = "Typheus, a little discord bot by Henry#6174\n**Add to your server**: {}\n**Support Server**: {}".format(invlink, servinv)
     async def starter():

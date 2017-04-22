@@ -709,32 +709,6 @@ class RPG(object):
                 await ctx.send(embed=embed)
 
     @checks.mod_or_permissions()
-    @_settings.command()
-    @checks.no_pm()
-    @server_eco_mode
-    async def editinfo(self, ctx, item: str, *, new_data):
-        """Edit an items data, same syntax as additem"""
-        settings = await self.get_settings(ctx.guild)
-        if item not in settings["items"]:
-            await ctx.send("That is not a valid item!")
-            return
-        if new_data.lower() == "none":
-            dfmt = ()
-        else:
-            dfmt = new_data.split("\n")
-        fdict = dict()
-        for item in dfmt:
-            split = item.split(": ")
-            key = split[0]
-            val = ": ".join(split[1:])
-            fdict[key] = val
-
-        settings = await self.get_settings(ctx.guild)
-        settings['items'][item] = fdict
-        await ctx.send("Edited item {}".format(item))
-        await self.update_settings(ctx.guild, settings)
-
-    @checks.mod_or_permissions()
     @_settings.command(aliases=["conf", "config"])
     @checks.no_pm()
     async def configure(self, ctx):
