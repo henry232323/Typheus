@@ -20,7 +20,7 @@
 # DEALINGS IN THE SOFTWARE.
 import io
 import os
-import json
+import ujson as json
 import psutil
 import base64
 import discord
@@ -255,7 +255,10 @@ class Misc(object):
     @commands.command()
     async def donate(self, ctx):
         """Donation information"""
-        await ctx.send("If you'd like, you can donate to me here: https://ko-fi.com/henrys")
+        await ctx.send("Keeping the bots running takes money, "
+                       "if several people would buy me a coffee each month, "
+                       "I wouldn't have to worry about it coming out of my pocket. "
+                       "If you'd like, you can donate to me here: https://ko-fi.com/henrys")
 
     @commands.command()
     async def feedback(self, ctx, *, feedback):

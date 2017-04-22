@@ -1,7 +1,7 @@
 # A utility for writing json without longhand LBYL checks for reading / writing
 # Original here: https://github.com/Twentysix26/Red-DiscordBot/blob/develop/cogs/utils/dataIO.py
 
-import json
+import ujson as json
 import os
 import logging
 from random import randint

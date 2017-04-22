@@ -30,7 +30,7 @@ from traceback import format_exc, print_exc
 from inspect import isawaitable
 from io import StringIO
 import base64
-import json
+import ujson as json
 
 from kyoukai import Kyoukai
 from kyoukai.asphalt import HTTPRequestContext, Response

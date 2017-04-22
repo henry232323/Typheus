@@ -27,7 +27,7 @@ from random import choice, randint
 from copy import copy
 import discord
 import asyncio
-import json
+import ujson as json
 
 
 def server_complex_mode(func):
