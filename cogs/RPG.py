@@ -635,7 +635,6 @@ class RPG(object):
     async def addinfo(self, ctx, item: str, *, new_data):
         """Add new info data to an item, same syntax as editinfo and additem"""
         settings = await self.get_settings(ctx.guild)
-        items = settings["items"]
         if item not in settings["items"]:
             await ctx.send("That is not a valid item!")
             return
@@ -644,9 +643,10 @@ class RPG(object):
             split = item.split(": ")
             key = split[0]
             val = ": ".join(split[1:])
-            items[key] = val
+            settings["items"][key] = val
 
         await self.update_settings(ctx.guild, settings)
+        await ctx.send("Settings updated!")
 
     @checks.mod_or_permissions()
     @_settings.command()
@@ -940,7 +940,7 @@ class RPG(object):
             embed.set_thumbnail(
                 url="https://mir-s3-cdn-cf.behance.net/project_modules/disp/196b9d18843737.562d0472d523f.png"
             )
-            fmt = "{}: {0:.2f}%"
+            fmt = "{0}: {1:.2f}%"
             for box, data in settings["lootboxes"].items():
                 total = sum(data["items"].values())
                 value = "Cost: {}\n\t".format(data["cost"]) + "\n\t".join(fmt.format(item, (value/total)*100) for item, value in data["items"].items())
