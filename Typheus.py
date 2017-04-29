@@ -259,7 +259,10 @@ def main():
     prefix = ';' if 'debug' not in sys.argv else '$'
     invlink = "https://discordapp.com/oauth2/authorize?client_id=284456340879966231&scope=bot&permissions=322641"
     servinv = "https://discord.gg/UYJb8fQ"
-    description = "Typheus, a little discord bot by Henry#6174\n**Add to your server**: {}\n**Support Server**: {}".format(invlink, servinv)
+    description = """Typheus, a little discord bot by Henry#6174\n**Add to your server**: {}\n**Support Server**: {}
+                  Note: Some commands require roles such as "Bot Inventory" "Bot Moderator" or "Bot Admin" give these
+                  to give permissions for certain RPG commands.
+                  """.format(invlink, servinv)
     async def starter():
         typheus = Typheus(
             loop=loop,

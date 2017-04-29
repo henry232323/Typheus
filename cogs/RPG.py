@@ -218,7 +218,8 @@ class RPG(object):
     @inventory.command()
     @checks.no_pm()
     async def giveitem(self, ctx, item: str, num: int, *members: Converter):
-        """Give an item a number of times to members"""
+        """Give an item a number of times to members
+        Requires "Bot Mod" or "Bot Inventory" roles"""
         if "everyone" in members:
             members = ctx.guild.members
         num = abs(num)
@@ -236,7 +237,8 @@ class RPG(object):
     @checks.no_pm()
     async def takeitem(self, ctx, item: str, num: int, *members: Converter):
         """Take a number of an item from a user
-            Same command usage as inventory giveitem, inversely"""
+        Same command usage as inventory giveitem, inversely
+        Requires "Bot Mod" or "Bot Inventory" roles"""
         if "everyone" in members:
             members = ctx.guild.members
         num = abs(num)
@@ -421,11 +423,12 @@ class RPG(object):
             url="http://rs795.pbsrc.com/albums/yy232/PixKaruumi/Pixels/Pixels%2096/248.gif~c200")
         await ctx.send(embed=embed)
 
-    @checks.mod_or_inv()
+    @checks.mod_or_permissions()
     @economy.command()
     @checks.no_pm()
     async def givemoney(self, ctx, amount: int, *members: Converter):
-        """Give `amount` of money to listed members"""
+        """Give `amount` of money to listed members
+        Requires "Bot Mod" role"""
         if "everyone" in members:
             members = ctx.guild.members
 
@@ -434,11 +437,12 @@ class RPG(object):
 
         await ctx.send("Money given!")
 
-    @checks.mod_or_inv()
+    @checks.mod_or_permissions()
     @economy.command(aliases=["setbal"])
     @checks.no_pm()
     async def setbalance(self, ctx, amount: int, *members: Converter):
-        """Set the balance of listed members to an `amount`"""
+        """Set the balance of listed members to an `amount`
+        Requires "Bot Mod" role"""
         if "everyone" in members:
             members = ctx.guild.members
 
@@ -543,7 +547,8 @@ class RPG(object):
     @commands.group(name="settings", aliases=["s", "stgs"], invoke_without_command=True)
     @checks.no_pm()
     async def _settings(self, ctx):
-        """Get the servers settings"""
+        """Get the servers settings
+        Requires "Bot Mod" role"""
         settings = await self.get_settings(ctx.guild)
 
         embed = discord.Embed()
@@ -590,7 +595,9 @@ class RPG(object):
                 Special Modifiers:
                     buyvalue: integer
                     sellvalue: integer
-                Set data to 'None' for no data"""
+                Set data to 'None' for no data
+                
+        Requires "Bot Mod" role"""
 
         if "@everyone" in name or "@here" in name:
             await ctx.send("Forbidden words in item name (everyone or here mentions)")
@@ -617,7 +624,8 @@ class RPG(object):
     @server_complex_mode
     @checks.no_pm()
     async def removeitem(self, ctx, name: str):
-        """Remove an item that can be given, inverse of ;i additem"""
+        """Remove an item that can be given, inverse of ;i additem
+        Requires "Bot Mod" role"""
         settings = await self.get_settings(ctx.guild)
         if name in settings['items']:
             del settings['items'][name]
@@ -633,7 +641,8 @@ class RPG(object):
     @checks.no_pm()
     @server_eco_mode
     async def addinfo(self, ctx, item: str, *, new_data):
-        """Add new info data to an item, same syntax as editinfo and additem"""
+        """Add new info data to an item, same syntax as editinfo and additem
+        Requires "Bot Mod" role"""
         settings = await self.get_settings(ctx.guild)
         if item not in settings["items"]:
             await ctx.send("That is not a valid item!")
@@ -653,7 +662,8 @@ class RPG(object):
     @checks.no_pm()
     @server_eco_mode
     async def setcurrency(self, ctx, currency: str):
-        """Change the servers currency for example 'Gold', etc"""
+        """Change the servers currency for example 'Gold', etc
+        Requires "Bot Mod" role"""
         settings = await self.get_settings(ctx.guild)
         old = settings['cur']
         settings['cur'] = currency
@@ -666,7 +676,8 @@ class RPG(object):
     @checks.no_pm()
     @server_eco_mode
     async def setstartamount(self, ctx, amount: int):
-        """Set the amount of money users start with"""
+        """Set the amount of money users start with
+        Requires "Bot Mod" role"""
         settings = await self.get_settings(ctx.guild)
         settings["start"] = amount
         await ctx.send("Players will now join the server with {} {}".format(amount, settings["cur"]))
@@ -708,11 +719,12 @@ class RPG(object):
                 embed.set_footer(text=str(ctx.message.created_at))
                 await ctx.send(embed=embed)
 
-    @checks.mod_or_permissions()
+    @checks.admin_or_permissions()
     @_settings.command(aliases=["conf", "config"])
     @checks.no_pm()
     async def configure(self, ctx):
-        """Configure the server's inventory settings"""
+        """Configure the server's inventory settings
+        Requires "Bot Admin" role"""
         settings = await self.get_settings(ctx.guild)
 
         desc = """To toggle complex inventory emote with :baggage_claim:
@@ -847,7 +859,8 @@ class RPG(object):
     @checks.no_pm()
     @server_eco_mode
     async def new(self, ctx, name: str, jackpot: int, time: int):
-        """Create a new lotto, with jacpot payout lasting time in seconds"""
+        """Create a new lotto, with jackpot payout lasting time in seconds
+        Requires "Bot Mod" role"""
         if ctx.guild.id not in self.lotteries:
             self.lotteries[ctx.guild.id] = dict()
         if name in self.lotteries[ctx.guild.id]:
@@ -962,7 +975,9 @@ class RPG(object):
         Use {item}x{#} notation to add items with {#} weight
         Weight being an integer. For example:
         bananax2 orangex3. The outcome of the box will be
-        Random Choice[banana, banana, orange, orange, orange]"""
+        Random Choice[banana, banana, orange, orange, orange]
+        
+        Requires "Bot Mod" role"""
 
         settings = await self.get_settings(ctx.guild)
         if name in settings["lootboxes"]:

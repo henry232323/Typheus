@@ -319,6 +319,7 @@ Typheus, a little discord bot by Henry#6174
 **Add to your server:** https://discordapp.com/oauth2/authorize?client_id=284456340879966231&scope=bot&permissions=305196074
 **Join the Support Server:** https://discord.gg/UYJb8fQ
 ;help {{command}} for more info on a command
+React with the given reactions to see info a set of commands.
 {}
 """.format("\n".join("{}: {}".format(n, c.emote) for n, c in self.bot.cogs.items() if c.emote))
         embed = discord.Embed(description=desc)

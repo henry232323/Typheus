@@ -41,19 +41,47 @@ def role_or_permissions(ctx, check, **perms):
 
 def mod_or_inv():
     def predicate(ctx):
-        return role_or_permissions(ctx, lambda r: r.name in ('Bot Mod', 'Bot Admin', 'Bot Inventory'))
+        if check_permissions(ctx, dict(manage_server=True)):
+            return True
+
+        check = lambda r: r.name in ('Bot Mod', 'Bot Admin', 'Bot Inventory')
+        ch = ctx.message.channel
+        author = ctx.message.author
+        if isinstance(ch, (discord.DMChannel, discord.GroupChannel)):
+            return False  # can't have roles in PMs
+
+        role = discord.utils.find(check, author.roles)
+        return role is not None
 
     return commands.check(predicate)
 
-def mod_or_permissions(**perms):
+def mod_or_permissions():
     def predicate(ctx):
-        return role_or_permissions(ctx, lambda r: r.name in ('Bot Mod', 'Bot Admin'), **perms)
+        if check_permissions(ctx, dict(manage_server=True)):
+            return True
+        check = lambda r: r.name in ('Bot Mod', 'Bot Admin')
+        ch = ctx.message.channel
+        author = ctx.message.author
+        if isinstance(ch, (discord.DMChannel, discord.GroupChannel)):
+            return False  # can't have roles in PMs
 
+        role = discord.utils.find(check, author.roles)
+        return role is not None
     return commands.check(predicate)
 
 def admin_or_permissions(**perms):
     def predicate(ctx):
-        return role_or_permissions(ctx, lambda r: r.name == 'Bot Admin', **perms)
+        if check_permissions(ctx, dict(manage_server=True)):
+            return True
+
+        check = lambda r: r.name == 'Bot Admin'
+        ch = ctx.message.channel
+        author = ctx.message.author
+        if isinstance(ch, (discord.DMChannel, discord.GroupChannel)):
+            return False  # can't have roles in PMs
+
+        role = discord.utils.find(check, author.roles)
+        return role is not None
 
     return commands.check(predicate)
 
