@@ -494,9 +494,9 @@ class RPG(object):
         num = abs(num)
         settings = await self.get_settings(ctx.guild)
         if item in settings['items']:
-            if settings['items'][item].get("sell_value", None):
+            if settings['items'][item].get("sellvalue", None):
                 try:
-                    val = int(settings['items'][item].get("sell_value", None)) * num
+                    val = int(settings['items'][item].get("sellvalue", None)) * num
                     await self.remove_inv(ctx.author, (item, num))
                     await self.add_eco(ctx.author, val)
                     await ctx.send("{} {}s sold for ${}".format(num, item, val))
@@ -516,9 +516,9 @@ class RPG(object):
             num = abs(num)
             settings = await self.get_settings(ctx.guild)
             if item in settings['items']:
-                if settings['items'][item].get("buy_value", None):
+                if settings['items'][item].get("buyvalue", None):
                     try:
-                        val = int(settings['items'][item].get("buy_value", None)) * num
+                        val = int(settings['items'][item].get("buyvalue", None)) * num
                         await self.add_inv(ctx.author, (item, num))
                         await self.add_eco(ctx.author, -val)
                         await ctx.send("{} {}s bought for ${}".format(num, item, val))
