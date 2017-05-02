@@ -499,7 +499,7 @@ class RPG(object):
                     val = int(settings['items'][item].get("sellvalue", None)) * num
                     await self.remove_inv(ctx.author, (item, num))
                     await self.add_eco(ctx.author, val)
-                    await ctx.send("{} {}s sold for ${}".format(num, item, val))
+                    await ctx.send(f"{num} {item}s sold for {settings['cur']} {val}")
                 except ValueError:
                     await ctx.send("You don't have enough {} to give! Cancelled.".format(item))
             else:
