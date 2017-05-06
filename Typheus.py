@@ -104,11 +104,8 @@ class Typheus(commands.Bot):
 
     async def on_ready(self):
         self.remove_command("help")
-        if not os.name == "nt":
-            self.conn = await asyncpg.connect(user='root', password='root',
-                                              database='typheus', host='127.0.0.1')
-        else:
-            self.conn = None
+        self.conn = await asyncpg.create_pool(user='root', password='root',
+                                               database='typheus', host='127.0.0.1')
 
         self.cogs = {"Admin": cogs.Admin.Admin(self),
                      "Misc": cogs.Misc.Misc(self),
@@ -133,13 +130,6 @@ class Typheus(commands.Bot):
             except TypeError:
                 pass
 
-        url = "https://bots.discord.pw/api/bots/{}/stats".format(self.user.id)
-        payload = json.dumps(dict(server_count=len(self.guilds))).encode()
-        headers = {'authorization': self.cmd._auth[2], "Content-Type": "application/json"}
-
-        async with self.session.post(url, data=payload, headers=headers) as response:
-            await response.read()
-
         await self.change_presence(game=discord.Game(name=";help for help!"))
         if self._shutdown_channel:
             channel = discord.utils.get(self.get_all_channels(), id=self._shutdown_channel)
@@ -147,6 +137,18 @@ class Typheus(commands.Bot):
                 for x in sample(self.startup_quips, 5):
                     await channel.send(x)
                     await asyncio.sleep(0.75)
+
+        await self.update_stats()
+
+    async def update_stats(self):
+        url = "https://bots.discord.pw/api/bots/{}/stats".format(self.user.id)
+        payload = json.dumps(dict(server_count=len(self.guilds))).encode()
+        headers = {'authorization': self.cmd._auth[1], "Content-Type": "application/json"}
+
+        async with self.session.post(url, data=payload, headers=headers) as response:
+            await response.read()
+
+        self.loop.call_later(14400, lambda: asyncio.ensure_future(self.update_stats()))
 
     async def on_message(self, message):
         if message.author.bot:

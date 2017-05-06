@@ -85,25 +85,29 @@ class RPG(object):
     async def addserv(self, guild, mode=1, items=None, ecc=False, nil=False):
         if nil: # If there absolutely is not
             req = """INSERT INTO servdata (UUID, info) VALUES ({0.id}, '{1}')""".format(guild, self.defaultdump)
-            await self.conn.fetch(req)
+            async with self.conn.acquire() as connection:
+                await connection.fetchval(req)
         else:
             req = f"""SELECT info FROM servdata WHERE UUID = {guild.id}"""
-            values = await self.conn.fetch(req)
-            if values:
+            async with self.conn.acquire() as connection:
+                values = await connection.fetchval(req)
+            if values is not None:
                 return
             else:
                 await self.addserv(guild, mode=mode, items=items, ecc=ecc, nil=True)
 
     async def in_settings(self, guild):
         req = f"""SELECT * FROM servdata WHERE UUID = {guild.id}"""
-        return bool(await self.conn.fetch(req))
+        async with self.conn.acquire() as connection:
+            return bool(await connection.fetchval(req))
 
     async def get_settings(self, guild):
         try:
             req = f"""SELECT info FROM servdata WHERE UUID = {guild.id}"""
-            values = await self.conn.fetch(req)
-            if values:
-                data = json.loads(values[0]["info"])
+            async with self.conn.acquire() as connection:
+                value = await connection.fetchval(req)
+            if value is not None:
+                data = json.loads(value)
                 return data
 
             else:
@@ -119,25 +123,28 @@ class RPG(object):
                       SET info = '{json_data}'
                       WHERE UUID = {guild.id}"""
 
-            await self.conn.fetch(req)
+            async with self.conn.acquire() as connection:
+                await connection.fetchval(req)
         except:
             print(json_data)
 
     async def get_full_inv(self, member):
-        values = await self.conn.fetch(
+        async with self.conn.acquire() as connection:
+            value = await connection.fetchval(
             """
             SELECT info FROM userdata WHERE UUID = {member.id};
             """.format(member=member))
 
-        if not values:
+        if value is None:
             rd = dict(items=dict(), money=0)
             data = {str(member.guild.id): rd}
-            await self.conn.fetch("""
+            async with self.conn.acquire() as connection:
+                await connection.fetchval("""
                 INSERT INTO userdata (UUID, info) VALUES ({member.id}, '{json_data}');
             """.format(member=member, json_data=json.dumps(data)))
 
         else:
-            data = json.loads(values[0]["info"])
+            data = json.loads(value)
             try:
                 itm = data[str(member.guild.id)]
                 itm["items"] = {x: y for x, y in itm["items"].items() if y}
@@ -146,7 +153,8 @@ class RPG(object):
                 rd = dict(items=dict(), money=0)
                 data[str(member.guild.id)] = rd
 
-            await self.conn.fetch("""UPDATE userdata
+            async with self.conn.acquire() as connection:
+                await connection.fetchval("""UPDATE userdata
             SET info = '{json_data}'
             WHERE UUID = {member.id};""".format(member=member, json_data=json.dumps(data)))
 
@@ -163,7 +171,8 @@ class RPG(object):
         command = """UPDATE userdata
            SET info = '{json_data}'
            WHERE UUID = {member.id};""".format(json_data=json.dumps(data), member=member)
-        await self.conn.fetch(command)
+        async with self.conn.acquire() as connection:
+            await connection.fetchval(command)
 
     async def get_eco(self, member):
         return (await self.get_inv(member))["money"]
@@ -177,7 +186,8 @@ class RPG(object):
            SET info = '{json_data}'
            WHERE UUID = {member.id};""".format(json_data=json.dumps(data).replace("'", "''"), member=member)
 
-        await self.conn.fetch(command)
+        async with self.conn.acquire() as connection:
+            values = await connection.fetchval(command)
 
     async def remove_inv(self, member, *items):
         data = await self.get_full_inv(member)
@@ -193,26 +203,30 @@ class RPG(object):
         command = """UPDATE userdata
            SET info = '{json_data}'
            WHERE UUID = {member.id};""".format(json_data=json.dumps(data), member=member)
-        await self.conn.fetch(command)
+        async with self.conn.acquire() as connection:
+            await connection.fetchval(command)
 
     @commands.group(invoke_without_command=True, aliases=['i', 'inv'])
     @checks.no_pm()
     async def inventory(self, ctx, *, member: discord.Member=None):
         """Check your or another users inventory. ;help inventory for more info"""
-        if member is None:
-            member = ctx.message.author
+        try:
+            if member is None:
+                member = ctx.message.author
 
-        inv = (await self.get_inv(member))["items"]
-        fmap = map(lambda itm: "x{1} {0}".format(itm, inv[itm]), inv)
-        fmt = "\n".join(fmap)
-        if not fmt:
-            await ctx.send("This inventory is empty!")
-        else:
-            embed = discord.Embed(description=fmt)
-            embed.set_author(name=member.display_name, icon_url=member.avatar_url)
-            embed.set_thumbnail(url="https://mir-s3-cdn-cf.behance.net/project_modules/disp/196b9d18843737.562d0472d523f.png")
-            embed.set_footer(text=str(ctx.message.created_at))
-            await ctx.send(embed=embed)
+            inv = (await self.get_inv(member))["items"]
+            fmap = map(lambda itm: "x{1} {0}".format(itm, inv[itm]), inv)
+            fmt = "\n".join(fmap)
+            if not fmt:
+                await ctx.send("This inventory is empty!")
+            else:
+                embed = discord.Embed(description=fmt)
+                embed.set_author(name=member.display_name, icon_url=member.avatar_url)
+                embed.set_thumbnail(url="https://mir-s3-cdn-cf.behance.net/project_modules/disp/196b9d18843737.562d0472d523f.png")
+                embed.set_footer(text=str(ctx.message.created_at))
+                await ctx.send(embed=embed)
+        except:
+            print_exc()
 
     @checks.mod_or_inv()
     @inventory.command()
