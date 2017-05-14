@@ -19,6 +19,7 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
 
+import asyncio
 import discord
 from discord.ext import commands
 
@@ -26,7 +27,8 @@ from .utils import checks
 
 
 class ChannelUtils(object):
-    '''A utility to mimic Teamspeak mechanics, allowing creation of temporary channels lasting one half hour for users'''
+    """A utility to mimic Teamspeak mechanics, allowing creation of temporary channels lasting one half hour for 
+    users """
     def __init__(self, bot):
         self.emote = "\U0001F4F1"
         self.bot = bot
@@ -72,20 +74,36 @@ class ChannelUtils(object):
                 self.current_users[guild].append(author.id)
                 info = (author, channel, ctx.message.guild)
                 self.current_channels[guild].append(info)
-                ch = await self.bot.wait_for("channel_delete", check=lambda dc: dc.id == channel.id, timeout=3600)
-                if ch is not None:
-                    self.current_channels[guild].remove(info)
-                    self.current_users[guild].remove(author.id)
-                else:
-                    if ctx.message.author in self.current_users[guild]:
-                        try:
-                            await channel.delete()
-                            self.current_channels[guild].remove(info)
-                            self.current_users[guild].remove(author.id)
-                            await ctx.send(author.mention + " `your channel has expired`")
-                        except discord.NotFound:
-                            self.current_channels[guild].remove(info)
-                            self.current_users[guild].remove(author.id)
+
+                while True:
+                    try:
+                        ch = await self.bot.wait_for("channel_delete", check=lambda dc: dc.id == channel.id, timeout=3600)
+                    except asyncio.TimeoutError:
+                        ch = None
+
+                    if ch is not None:
+                        self.current_channels[guild].remove(info)
+                        self.current_users[guild].remove(author.id)
+                    else:
+                        if channel.members:
+                            continue
+
+                        if ctx.message.author in self.current_users[guild]:
+                            try:
+                                await channel.delete()
+                                self.current_channels[guild].remove(info)
+                                self.current_users[guild].remove(author.id)
+                                await ctx.send(author.mention + " your channel has expired")
+                            except discord.NotFound:
+                                self.current_channels[guild].remove(info)
+                                self.current_users[guild].remove(author.id)
+
+                    if not self.current_channels[guild]:
+                        del self.current_channels[guild]
+                    if not self.current_users[ctx.message.guild]:
+                        del self.current_users[ctx.message.guild]
+
+                    break
             else:
                 await ctx.send('`You already have a channel in use!`')
         except discord.errors.Forbidden:
@@ -130,7 +148,11 @@ class ChannelUtils(object):
                 if channel[0] == ctx.message.author:
                     await channel[1].delete()
                     self.current_channels[ctx.message.guild].remove(channel)
+                    if not self.current_channels[ctx.message.guild]:
+                        del self.current_channels[ctx.message.guild]
                     self.current_users[ctx.message.guild].remove(ctx.message.author)
+                    if not self.current_users[ctx.message.guild]:
+                        del self.current_users[ctx.message.guild]
                     await ctx.send('`Your channel has been deleted`')
         else:
             ctx.send('`You do not currently have a channel`')

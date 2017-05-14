@@ -143,7 +143,14 @@ class Typheus(commands.Bot):
     async def update_stats(self):
         url = "https://bots.discord.pw/api/bots/{}/stats".format(self.user.id)
         payload = json.dumps(dict(server_count=len(self.guilds))).encode()
-        headers = {'authorization': self.cmd._auth[1], "Content-Type": "application/json"}
+        headers = {'authorization': self.cmd._auth[2], "Content-Type": "application/json"}
+
+        async with self.session.post(url, data=payload, headers=headers) as response:
+            await response.read()
+
+        url = "https://discordbots.org/api/bots/{}/stats".format(self.user.id)
+        payload = json.dumps(dict(server_count=len(self.guilds))).encode()
+        headers = {'authorization': self.cmd._auth[3], "Content-Type": "application/json"}
 
         async with self.session.post(url, data=payload, headers=headers) as response:
             await response.read()
