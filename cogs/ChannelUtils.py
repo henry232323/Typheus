@@ -27,7 +27,7 @@ from .utils import checks
 
 
 class ChannelUtils(object):
-    """A utility to mimic Teamspeak mechanics, allowing creation of temporary channels lasting one half hour for 
+    """A utility to mimic TeamSpeak mechanics, allowing creation of temporary channels lasting one half hour for
     users """
     def __init__(self, bot):
         self.emote = "\U0001F4F1"
@@ -54,13 +54,23 @@ class ChannelUtils(object):
     @checks.chcreate_or_permissions(manage_channels=True)
     @channel.command(aliases=['cr'])
     @checks.no_pm()
-    async def create(self, ctx, limit: int, *, name: str):
-        '''Requires the role of 'Create Channel' Create a temporary voice channel,
+    async def create(self, ctx, time: str, limit: int, *, name: str):
+        """Requires the role of 'Create Channel' Create a temporary voice channel,
         where limit is the user limit and name is the name of the channel.
-        Set the limit to "0" for no limit.'''
+        Set the limit to "0" for no limit.
+        Example: ;ch create 60 5 banana realm
+        This will create a channel for 60 minutes with a max of 5 people called 'banana realm'"""
         if ctx.guild not in self.current_users:
             self.current_users[ctx.guild] = list()
             self.current_channels[ctx.guild] = list()
+        if len(time) > 4:
+            await ctx.send("Temporary channels can last at most a day! (1440 minutes)")
+            return
+        else:
+            time = int(time)
+            if time > 1440:
+                await ctx.send("Temporary channels can last at most a day! (1440 minutes)")
+                return
         try:
             guild = ctx.message.guild
             if ctx.message.author not in self.current_users[guild]:
@@ -77,7 +87,7 @@ class ChannelUtils(object):
 
                 while True:
                     try:
-                        ch = await self.bot.wait_for("channel_delete", check=lambda dc: dc.id == channel.id, timeout=3600)
+                        ch = await self.bot.wait_for("channel_delete", check=lambda dc: dc.id == channel.id, timeout=time)
                     except asyncio.TimeoutError:
                         ch = None
 

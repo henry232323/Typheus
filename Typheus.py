@@ -122,14 +122,6 @@ class Typheus(commands.Bot):
         print(self.user.id)
         print('------')
 
-        for guild in self.guilds:
-            try:
-                print("\t".join((guild.id, guild.name,)))
-            except UnicodeEncodeError:
-                print("\t".join((guild.id, "Unknown Characters")))
-            except TypeError:
-                pass
-
         await self.change_presence(game=discord.Game(name=";help for help!"))
         if self._shutdown_channel:
             channel = discord.utils.get(self.get_all_channels(), id=self._shutdown_channel)
